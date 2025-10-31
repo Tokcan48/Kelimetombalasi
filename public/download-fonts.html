@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Font İndirici</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            margin: 10px;
+            background: #4CAF50;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .button:hover {
+            background: #45a049;
+        }
+        .info {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📥 Font İndirme Sayfası</h1>
+        <div class="info">
+            <p><strong>Adımlar:</strong></p>
+            <ol>
+                <li>Aşağıdaki butonlara tıklayın</li>
+                <li>Dosyaları <strong>public/fonts/</strong> klasörüne kaydedin</li>
+                <li>Sayfayı yenileyin ve PDF oluşturmayı tekrar deneyin</li>
+            </ol>
+        </div>
+        
+        <h2>DejaVu Sans Bold</h2>
+        <a href="https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans-Bold.ttf" 
+           download="DejaVuSans-Bold.ttf" 
+           class="button">📥 DejaVuSans-Bold.ttf İndir</a>
+        
+        <h2>DejaVu Sans Regular</h2>
+        <a href="https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans.ttf" 
+           download="DejaVuSans.ttf" 
+           class="button">📥 DejaVuSans.ttf İndir</a>
+        
+        <div class="info" style="margin-top: 30px;">
+            <p><strong>Not:</strong> Dosyaları indirdikten sonra, Windows Dosya Gezgini'nde:</p>
+            <p><code>C:\Users\lenov\OneDrive\Desktop\Kelimetombalasi\public\fonts\</code></p>
+            <p>klasörüne taşıyın.</p>
+        </div>
+    </div>
+</body>
+</html>
+
