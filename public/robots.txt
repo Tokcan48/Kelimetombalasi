@@ -1,0 +1,35 @@
+# robots.txt for Kelime Tombalası
+# Generated for production deployment
+
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /login
+
+# Sitemaps (update with your actual domain when deploying)
+# Sitemap: https://yourdomain.com/sitemap.xml
+
+# Crawl-delay for all bots (in seconds)
+Crawl-delay: 1
+
+# Allow common search engines
+User-agent: Googlebot
+Allow: /
+Disallow: /admin
+Disallow: /login
+
+User-agent: Bingbot
+Allow: /
+Disallow: /admin
+Disallow: /login
+
+# Block bad bots
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: DotBot
+Disallow: /
+

@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import confetti from 'canvas-confetti'
+import { saveFeedback } from './utils/feedback'
+import { getSiteContent } from './utils/siteContent'
+import { SECURE_LOGIN_URL } from './App'
 
 function Feedback() {
   const [formData, setFormData] = useState({
@@ -13,7 +16,10 @@ function Feedback() {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    // Form gönderimi simülasyonu
+    
+    // Save feedback to localStorage
+    saveFeedback(formData.name, formData.email, formData.message)
+    
     setSubmitted(true)
     confetti({
       particleCount: 50,
@@ -25,6 +31,31 @@ function Feedback() {
       setFormData({ name: '', email: '', message: '', rating: 0 })
       setSubmitted(false)
     }, 3000)
+  }
+
+  // Check for maintenance mode
+  const siteContent = getSiteContent()
+  if (siteContent.siteStatus === 'maintenance') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-900 to-slate-800 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-slate-800/50 backdrop-blur-xl rounded-2xl p-8 shadow-2xl border border-slate-700 text-center">
+          <div className="w-20 h-20 bg-gradient-to-br from-orange-500 to-red-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+            <span className="text-4xl">🔧</span>
+          </div>
+          <h1 className="text-3xl font-bold text-white font-poppins mb-4">Site Bakımda</h1>
+          <p className="text-gray-300 font-poppins mb-6">{siteContent.maintenanceMessage}</p>
+          <div className="flex items-center justify-center gap-2 text-gray-400 text-sm font-poppins">
+            <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
+            <span>Sistem güncellemesi yapılıyor...</span>
+          </div>
+          <div className="mt-8 pt-6 border-t border-slate-700">
+            <p className="text-gray-500 text-xs font-poppins">
+              Admin? <Link to={SECURE_LOGIN_URL} className="text-blue-400 hover:text-blue-300 underline">Buraya tıklayın</Link>
+            </p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
