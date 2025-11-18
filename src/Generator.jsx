@@ -13,18 +13,17 @@ function Generator() {
   const [isLoadingWord, setIsLoadingWord] = useState(false)
   const [isLoadingPDF, setIsLoadingPDF] = useState(false)
   const [showManualInput, setShowManualInput] = useState(false)
-  const [printerType, setPrinterType] = useState('color') // 'color' veya 'bw'
-  const [modal, setModal] = useState({ show: false, message: '', type: 'info' }) // 'info', 'success', 'error'
+  const [printerType, setPrinterType] = useState('color')
+  const [modal, setModal] = useState({ show: false, message: '', type: 'info' })
   const fileInputRef = useRef(null)
   const [sessionId] = useState(() => trackActiveSession())
   const [showAddToReadyKits, setShowAddToReadyKits] = useState(false)
   const [generatedWords, setGeneratedWords] = useState([])
 
-  // Update session activity every minute
   useEffect(() => {
     const interval = setInterval(() => {
       updateSessionActivity(sessionId)
-    }, 60000) // 1 minute
+    }, 60000)
     
     return () => clearInterval(interval)
   }, [sessionId])
@@ -39,7 +38,6 @@ function Generator() {
 
   const handleInputChange = (e) => {
     let value = e.target.value
-    // Eğer kullanıcı " - " formatında girerse, " : " ile değiştir
     value = value.replace(/\s*-\s*/g, ': ')
     setWordInput(value)
   }
@@ -59,19 +57,15 @@ function Generator() {
       const result = await mammoth.extractRawText({ arrayBuffer })
       const text = result.value
 
-      // Kelimeleri formatla (her satırı kontrol et)
       const lines = text.split('\n').filter(line => line.trim())
       const formattedText = lines
         .map(line => {
-          // Eğer zaten "ingilizce : türkçe" formatındaysa olduğu gibi bırak
           if (line.includes(':')) {
             return line.trim().replace(/[-–—]/g, ':').replace(/:\s*/g, ': ')
           }
-          // Eğer " - " formatındaysa " : " ile değiştir
           if (line.includes(' - ')) {
             return line.trim().replace(/\s*-\s*/g, ': ')
           }
-          // Eğer sadece boşlukla ayrılmışsa, ":" ile değiştir
           const parts = line.trim().split(/\s+/)
           if (parts.length >= 2) {
             return `${parts[0]}: ${parts.slice(1).join(' ')}`
@@ -82,10 +76,8 @@ function Generator() {
         .join('\n')
 
       setWordInput(formattedText)
-      // Word yüklendiğinde textarea açılmayacak, sadece elle girişte açılacak
       showModal('Word dosyası başarıyla yüklendi! ✨', 'success')
       
-      // Konfeti animasyonu
       confetti({
         particleCount: 60,
         spread: 60,
@@ -97,7 +89,6 @@ function Generator() {
       showModal('Word dosyası okunurken bir hata oluştu. Lütfen dosyanın doğru formatta olduğundan emin olun.', 'error')
     } finally {
       setIsLoadingWord(false)
-      // File input'u temizle
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
       }
@@ -112,11 +103,9 @@ function Generator() {
 
     setIsLoadingPDF(true)
     
-    // Use forced printer type if provided, otherwise use state
     const activePrinterType = forcePrinterType || printerType
     
     try {
-      // Kelimeleri parse et
       const lines = wordInput.split('\n').filter(line => line.trim())
       const parsedPairs = lines.map(line => {
         const parts = line.split(':').map(p => p.trim())
@@ -135,7 +124,6 @@ function Generator() {
         return
       }
 
-      // Türkçe karakterleri ASCII'ye çevir
       const turkishToAscii = (text) => {
         return text
           .replace(/ş/g, 's').replace(/Ş/g, 'S')
@@ -146,44 +134,35 @@ function Generator() {
           .replace(/ç/g, 'c').replace(/Ç/g, 'C')
       }
 
-      // Kelime çiftlerindeki Türkçe karakterleri çevir
       const convertedPairs = parsedPairs.map(pair => ({
         english: turkishToAscii(pair.english),
         turkish: turkishToAscii(pair.turkish)
       }))
 
-      // PDF oluştur
       const pdfDoc = await PDFDocument.create()
       const font = await pdfDoc.embedFont('Helvetica-Bold')
       const fontSize = 16
-
-      // A4 boyutları (points)
       const pageWidth = 595.28
       const pageHeight = 841.89
       
-      // Kenar boşlukları (mm to points: 1mm = 2.83465pt)
       const mm = 2.83465
       const marginLeft = 20 * mm
       const marginRight = 20 * mm
       const marginTop = 15 * mm
       const marginBottom = 15 * mm
-      const gap = 0.5 * mm // Dikdörtgenler arası 0.5mm
+      const gap = 0.5 * mm
       
       const usableWidth = pageWidth - marginLeft - marginRight
       const usableHeight = pageHeight - marginTop - marginBottom
       
-      // Her satırda max 4 kelime, max 12 satır
       const wordsPerRow = 4
       const maxRows = 12
-      const wordsPerPage = wordsPerRow * maxRows // 48 kelime per sayfa
+      const wordsPerPage = wordsPerRow * maxRows
       const totalWords = convertedPairs.length
       
-      // Sabit kart boyutları (tüm satırlarda aynı)
-      // 4 kelimelik satır ve 12 satır için optimal boyut hesapla
       const cardWidth = (usableWidth - (gap * (wordsPerRow - 1))) / wordsPerRow
       const cardHeight = (usableHeight - (gap * (maxRows - 1))) / maxRows
       
-      // Sayfa çizme fonksiyonu (belirli bir başlangıç index'i ve kelime sayısı ile)
       const drawPage = (page, getTextFunc, startIndex, wordsToDraw) => {
         const wordsOnThisPage = Math.min(wordsToDraw, wordsPerPage)
         const actualRows = Math.ceil(wordsOnThisPage / wordsPerRow)
@@ -193,11 +172,10 @@ function Generator() {
           const wordsInRow = Math.min(wordsPerRow, (startIndex + wordsOnThisPage) - wordIndex)
           if (wordsInRow === 0) break
           
-          // Satırı hizala: 4 kelime varsa ortala, az kelime varsa soldan başla
           const rowWidth = (cardWidth * wordsInRow) + (gap * (wordsInRow - 1))
           const startX = wordsInRow === wordsPerRow 
-            ? marginLeft + (usableWidth - rowWidth) / 2  // Ortala
-            : marginLeft  // Soldan başla
+            ? marginLeft + (usableWidth - rowWidth) / 2
+            : marginLeft
           const y = pageHeight - marginTop - (row * (cardHeight + gap)) - cardHeight
           
           for (let col = 0; col < wordsInRow; col++) {
@@ -205,22 +183,20 @@ function Generator() {
             const text = getTextFunc(pair)
             const x = startX + col * (cardWidth + gap)
             
-            // Yazıcı tipine göre kutucuk rengi
             if (activePrinterType === 'color') {
-              // Renkli yazıcı: Her kutuya farklı canlı renk
               const colorPalette = [
-                rgb(0.4, 0.8, 1.0),   // Canlı mavi
-                rgb(1.0, 0.8, 0.4),   // Canlı sarı
-                rgb(1.0, 0.6, 0.8),   // Canlı pembe
-                rgb(0.6, 1.0, 0.6),   // Canlı yeşil
-                rgb(1.0, 0.7, 0.4),   // Canlı turuncu
+                rgb(0.4, 0.8, 1.0),
+                rgb(1.0, 0.8, 0.4),
+                rgb(1.0, 0.6, 0.8),
+                rgb(0.6, 1.0, 0.6),
+                rgb(1.0, 0.7, 0.4),
               ]
               const borderPalette = [
-                rgb(0.2, 0.6, 0.9),   // Koyu mavi kenarlık
-                rgb(0.9, 0.6, 0.2),   // Koyu sarı kenarlık
-                rgb(0.9, 0.4, 0.6),   // Koyu pembe kenarlık
-                rgb(0.4, 0.9, 0.4),   // Koyu yeşil kenarlık
-                rgb(0.9, 0.5, 0.2),   // Koyu turuncu kenarlık
+                rgb(0.2, 0.6, 0.9),
+                rgb(0.9, 0.6, 0.2),
+                rgb(0.9, 0.4, 0.6),
+                rgb(0.4, 0.9, 0.4),
+                rgb(0.9, 0.5, 0.2),
               ]
               const colorIndex = wordIndex % colorPalette.length
               page.drawRectangle({
@@ -230,33 +206,29 @@ function Generator() {
                 height: cardHeight,
                 color: colorPalette[colorIndex],
                 borderColor: borderPalette[colorIndex],
-                borderWidth: 0.5, // İnce kenarlık
+                borderWidth: 0.5,
               })
             } else {
-              // Siyah-beyaz yazıcı: Beyaz kutucuk, siyah kenarlık
               page.drawRectangle({
                 x: x,
                 y: y,
                 width: cardWidth,
                 height: cardHeight,
-                color: rgb(1, 1, 1), // Beyaz
-                borderColor: rgb(0, 0, 0), // Siyah
-                borderWidth: 0.5, // İnce kenarlık
+                color: rgb(1, 1, 1),
+                borderColor: rgb(0, 0, 0),
+                borderWidth: 0.5,
               })
             }
 
-            // Metni kutucuğa sığdır (font boyutunu dinamik ayarla)
             let actualFontSize = fontSize
-            const maxWidth = cardWidth * 0.9 // %10 kenar boşluğu
+            const maxWidth = cardWidth * 0.9
             let textWidth = font.widthOfTextAtSize(text, actualFontSize)
             
-            // Eğer metin kutucuktan büyükse font boyutunu küçült
             if (textWidth > maxWidth) {
               actualFontSize = (maxWidth / textWidth) * fontSize
               textWidth = font.widthOfTextAtSize(text, actualFontSize)
             }
             
-            // Metni ortala
             const textX = x + (cardWidth - textWidth) / 2
             const textY = y + (cardHeight / 2) - (actualFontSize * 0.35)
             
@@ -311,19 +283,15 @@ function Generator() {
       
       showModal(message, 'success')
       
-      // Kelimeleri kaydet ve hazır setlere ekleme seçeneğini göster
       setGeneratedWords(parsedPairs)
       setShowAddToReadyKits(true)
       
-      // Kutucuğa scroll yap
       setTimeout(() => {
         const element = document.getElementById('add-to-ready-kits')
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'center' })
         }
       }, 500)
-      
-      // Konfeti animasyonu
       confetti({
         particleCount: 100,
         spread: 70,

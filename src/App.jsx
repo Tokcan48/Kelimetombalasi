@@ -43,7 +43,6 @@ function App() {
   )
 }
 
-// Export secure URLs so other components can use them
 export { SECURE_ADMIN_URL, SECURE_LOGIN_URL }
 export default App
 
