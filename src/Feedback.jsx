@@ -14,11 +14,12 @@ function Feedback() {
   })
   const [submitted, setSubmitted] = useState(false)
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     
-    // Save feedback to localStorage
-    saveFeedback(formData.name, formData.email, formData.message)
+    try {
+      // Save feedback to Firebase (with rating)
+      await saveFeedback(formData.name, formData.email, formData.message, formData.rating)
     
     setSubmitted(true)
     confetti({
@@ -31,6 +32,10 @@ function Feedback() {
       setFormData({ name: '', email: '', message: '', rating: 0 })
       setSubmitted(false)
     }, 3000)
+    } catch (error) {
+      console.error('Geri bildirim gönderilirken hata:', error)
+      alert('Geri bildirim gönderilirken bir hata oluştu. Lütfen tekrar deneyin.')
+    }
   }
 
   // Check for maintenance mode

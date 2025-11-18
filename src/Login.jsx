@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { validateCredentials } from './utils/adminAuth'
+import { addSystemLog } from './utils/systemLogs'
 import { SECURE_ADMIN_URL } from './App'
 
 function Login() {
@@ -23,33 +24,23 @@ function Login() {
       localStorage.setItem('isAdminLoggedIn', 'true')
       localStorage.setItem('adminUsername', username)
       
-      // Add system log
-      const systemLogs = JSON.parse(localStorage.getItem('systemLogs') || '[]')
-      systemLogs.unshift({
-        id: Date.now(),
-        type: 'success',
-        message: 'Admin başarıyla giriş yaptı',
-        user: 'Admin',
-        timestamp: new Date().toISOString()
-      })
-      if (systemLogs.length > 50) systemLogs.splice(50)
-      localStorage.setItem('systemLogs', JSON.stringify(systemLogs))
+      // Add system log to Firebase
+      try {
+        await addSystemLog('success', 'Admin başarıyla giriş yaptı', username)
+      } catch (error) {
+        console.error('Sistem logu eklenirken hata:', error)
+      }
       
       navigate(SECURE_ADMIN_URL)
     } else {
       setError('Kullanıcı adı veya şifre hatalı!')
       
-      // Add failed login log
-      const systemLogs = JSON.parse(localStorage.getItem('systemLogs') || '[]')
-      systemLogs.unshift({
-        id: Date.now(),
-        type: 'warning',
-        message: 'Başarısız giriş denemesi',
-        user: 'Bilinmeyen',
-        timestamp: new Date().toISOString()
-      })
-      if (systemLogs.length > 50) systemLogs.splice(50)
-      localStorage.setItem('systemLogs', JSON.stringify(systemLogs))
+      // Add failed login log to Firebase
+      try {
+        await addSystemLog('warning', 'Başarısız giriş denemesi', 'Bilinmeyen')
+      } catch (error) {
+        console.error('Sistem logu eklenirken hata:', error)
+      }
     }
 
     setIsLoading(false)

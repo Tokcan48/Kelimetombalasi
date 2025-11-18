@@ -6,6 +6,7 @@ import confetti from 'canvas-confetti'
 import { trackPDFGeneration, trackActiveSession, updateSessionActivity } from './utils/analytics'
 import { getSiteContent } from './utils/siteContent'
 import { SECURE_LOGIN_URL } from './App'
+import { submitKitForApproval } from './utils/pendingKits'
 
 function Generator() {
   const [wordInput, setWordInput] = useState('')
@@ -16,6 +17,8 @@ function Generator() {
   const [modal, setModal] = useState({ show: false, message: '', type: 'info' }) // 'info', 'success', 'error'
   const fileInputRef = useRef(null)
   const [sessionId] = useState(() => trackActiveSession())
+  const [showAddToReadyKits, setShowAddToReadyKits] = useState(false)
+  const [generatedWords, setGeneratedWords] = useState([])
 
   // Update session activity every minute
   useEffect(() => {
@@ -308,6 +311,18 @@ function Generator() {
       
       showModal(message, 'success')
       
+      // Kelimeleri kaydet ve hazır setlere ekleme seçeneğini göster
+      setGeneratedWords(parsedPairs)
+      setShowAddToReadyKits(true)
+      
+      // Kutucuğa scroll yap
+      setTimeout(() => {
+        const element = document.getElementById('add-to-ready-kits')
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }, 500)
+      
       // Konfeti animasyonu
       confetti({
         particleCount: 100,
@@ -393,7 +408,7 @@ function Generator() {
           </div>
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-3 font-poppins">
             Kelime Kartı Oluşturucu
-          </h1>
+            </h1>
           <p className="text-lg text-gray-600 font-poppins max-w-2xl mx-auto">
             İngilizce-Türkçe kelime kartlarınızı kolayca PDF'e dönüştürün
           </p>
@@ -584,10 +599,102 @@ function Generator() {
                   <strong className="text-gray-900 font-bold">Format Bilgisi:</strong> Her satırda bir kelime çifti yazın. 
                   <span className="block mt-2">
                     Örnek: <span className="font-mono bg-white px-3 py-1.5 rounded-lg border-2 border-blue-300 font-semibold">cat: kedi</span>
-                  </span>
+                </span>
                 </div>
               </div>
             </div>
+
+            {/* Hazır Setlere Ekleme Kutucuğu - Ana Kartın İçinde */}
+            {showAddToReadyKits && generatedWords.length > 0 && (
+              <div id="add-to-ready-kits" className="mt-8 pt-8 border-t-2 border-gray-200">
+            <div className="bg-gradient-to-br from-purple-100 via-pink-100 to-indigo-100 rounded-2xl p-8 md:p-12 border-4 border-purple-300 shadow-2xl">
+              <div className="text-center mb-6">
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-purple-600 to-pink-600 rounded-2xl mb-4 shadow-lg">
+                  <span className="text-4xl">⭐</span>
+                </div>
+                <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3 font-poppins">
+                  Hazır Setlere Eklemek İster misiniz?
+                </h2>
+                <p className="text-lg text-gray-700 font-poppins max-w-2xl mx-auto mb-2">
+                  Oluşturduğunuz {generatedWords.length} kelime çiftini hazır setlere ekleyerek diğer kullanıcılarla paylaşabilirsiniz.
+                </p>
+                <p className="text-sm text-purple-700 font-poppins font-semibold bg-purple-50 px-4 py-2 rounded-lg inline-block mt-2">
+                  📋 Admin onayından sonra yayınlanacaktır
+                </p>
+              </div>
+              
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8">
+                <button
+                  onClick={async () => {
+                    try {
+                      setIsLoadingPDF(true)
+                      
+                      // Firebase'e admin onayı için gönder
+                      await submitKitForApproval({
+                        title: `Özel Set (${new Date().toLocaleDateString('tr-TR')})`,
+                        description: `${generatedWords.length} kelime çifti`,
+                        icon: '📝',
+                        color: 'from-purple-500 to-pink-600',
+                        category: 'beginner',
+                        words: generatedWords,
+                        submittedBy: 'Kullanıcı'
+                      })
+                      
+                      showModal('Kelime setiniz admin onayına gönderildi! Onaylandıktan sonra hazır setlerde görünecektir. 🎉', 'success')
+                      setShowAddToReadyKits(false)
+                      
+                      confetti({
+                        particleCount: 50,
+                        spread: 60,
+                        origin: { y: 0.6 },
+                        colors: ['#8B5CF6', '#EC4899', '#6366F1']
+                      })
+                    } catch (error) {
+                      console.error('Gönderim hatası:', error)
+                      showModal('Set gönderilirken bir hata oluştu. Lütfen tekrar deneyin.', 'error')
+                    } finally {
+                      setIsLoadingPDF(false)
+                    }
+                  }}
+                  disabled={isLoadingPDF}
+                  className="group px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all font-poppins text-lg flex items-center gap-3 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isLoadingPDF ? (
+                    <>
+                      <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>Gönderiliyor...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>✅ Evet, Onaya Gönder</span>
+                      <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowAddToReadyKits(false)
+                  }}
+                  disabled={isLoadingPDF}
+                  className="px-8 py-4 bg-white hover:bg-gray-50 border-2 border-gray-300 hover:border-gray-400 text-gray-900 font-bold rounded-xl shadow-md hover:shadow-lg transition-all font-poppins text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Hayır, Teşekkürler
+                </button>
+              </div>
+              
+              <div className="mt-6 text-center">
+                <p className="text-sm text-gray-600 font-poppins">
+                  💡 İpucu: Admin onayladıktan sonra setiniz hazır setler sayfasında görünecektir!
+                </p>
+              </div>
+            </div>
+              </div>
+            )}
           </div>
         </div>
 

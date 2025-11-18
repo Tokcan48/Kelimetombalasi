@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { getRealAnalytics, getRecentPDFHistory, getPDFHistoryByUser } from './utils/analytics'
-import { getSystemLogs, addSystemLog } from './utils/systemLogs'
-import { getAllFeedbacks, getUnreadCount, markAsRead, deleteFeedback, getTimeAgo } from './utils/feedback'
+import { getSystemLogs, addSystemLog, subscribeToSystemLogs } from './utils/systemLogs'
+import { getAllFeedbacks, getUnreadCount, markAsRead, deleteFeedback, getTimeAgo, subscribeToFeedbacks, subscribeToUnreadCount } from './utils/feedback'
 import { getSiteContent, saveSiteContent, resetSiteContent } from './utils/siteContent'
-import { getAdSenseSettings, saveAdSenseSettings, generateAdsTxt, resetAdSenseSettings } from './utils/adsense'
+import { getAdSenseSettings, saveAdSenseSettings, generateAdsTxt } from './utils/adsense'
 import { getAdminCredentials, saveAdminCredentials } from './utils/adminAuth'
-import { getBrandingSettings, saveBrandingSettings, fileToBase64, resetBrandingSettings } from './utils/branding'
+import { getBrandingSettings, saveBrandingSettings, fileToBase64 } from './utils/branding'
+import { getPendingKits, getPendingKitsCount, approveKit, rejectKit, deletePendingKit, subscribeToPendingKits, subscribeToPendingKitsCount } from './utils/pendingKits'
+import { categories as defaultCategories } from './utils/readyKits'
+import { getCategories, addCategory, updateCategory, deleteCategory, subscribeToCategories, initializeCategories } from './utils/categories'
 import { SECURE_LOGIN_URL } from './App'
 
 function Admin() {
@@ -20,6 +23,7 @@ function Admin() {
     weeklyPDFs: 0,
     weeklyGrowth: 0,
     estimatedUsers: 0,
+    activeUsers: 0,
     avgWordsPerPDF: 0
   })
 
@@ -39,27 +43,154 @@ function Admin() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [brandingSettings, setBrandingSettings] = useState(getBrandingSettings())
   const [isSavingBranding, setIsSavingBranding] = useState(false)
+  const [pendingKits, setPendingKits] = useState([])
+  const [pendingKitsCount, setPendingKitsCount] = useState(0)
+  const [categories, setCategories] = useState([])
+  const [newCategory, setNewCategory] = useState({ name: '', icon: '📂', description: '' })
+  const [editingCategory, setEditingCategory] = useState(null)
+  const [isSavingCategory, setIsSavingCategory] = useState(false)
 
   // Function to update stats
-  const updateStats = () => {
-    const realStats = getRealAnalytics()
+  const updateStats = async () => {
+    try {
+      const realStats = await getRealAnalytics()
     setStats(realStats)
+    } catch (error) {
+      console.error('Analytics yüklenirken hata:', error)
+    }
     
-    const groupedPDFs = getPDFHistoryByUser()
+    try {
+      const groupedPDFs = await getPDFHistoryByUser()
     setPdfHistory(groupedPDFs)
+    } catch (error) {
+      console.error('PDF geçmişi yüklenirken hata:', error)
+    }
     
-    const recent = getRecentPDFHistory(10)
+    try {
+      const recent = await getRecentPDFHistory(10)
     setRecentPDFs(recent)
+    } catch (error) {
+      console.error('Son PDF geçmişi yüklenirken hata:', error)
+    }
     
-    const logs = getSystemLogs(20)
+    try {
+      const logs = await getSystemLogs(20)
     setSystemLogs(logs)
+    } catch (error) {
+      console.error('Sistem logları yüklenirken hata:', error)
+    }
     
-    const allFeedbacks = getAllFeedbacks()
+    try {
+      const allFeedbacks = await getAllFeedbacks()
     setFeedbacks(allFeedbacks)
+    } catch (error) {
+      console.error('Geri bildirimler yüklenirken hata:', error)
+    }
     
-    const unread = getUnreadCount()
+    try {
+      const unread = await getUnreadCount()
     setUnreadCount(unread)
+    } catch (error) {
+      console.error('Okunmamış sayı yüklenirken hata:', error)
+    }
+    
+    try {
+      const kits = await getPendingKits()
+      setPendingKits(kits)
+    } catch (error) {
+      console.error('Bekleyen setler yüklenirken hata:', error)
+    }
+    
+    try {
+      const count = await getPendingKitsCount()
+      setPendingKitsCount(count)
+    } catch (error) {
+      console.error('Bekleyen set sayısı yüklenirken hata:', error)
+    }
   }
+
+  // Auto-refresh feedbacks and stats with Firebase real-time listeners
+  useEffect(() => {
+    // Check for authentication
+    const credentials = getAdminCredentials()
+    const isAuthenticated = localStorage.getItem('adminLoggedIn') === 'true' || localStorage.getItem('isAdminLoggedIn') === 'true'
+    
+    if (!isAuthenticated) {
+      navigate(SECURE_LOGIN_URL)
+      return
+    }
+    
+    // Initial load
+    updateStats()
+    
+    // Set up real-time listeners for Firebase
+    let unsubscribeFeedbacks = null
+    let unsubscribeUnreadCount = null
+    let unsubscribeLogs = null
+    let unsubscribePendingKits = null
+    let unsubscribePendingKitsCount = null
+    
+    try {
+      // Real-time feedbacks listener
+      unsubscribeFeedbacks = subscribeToFeedbacks((feedbacks) => {
+        setFeedbacks(feedbacks)
+      })
+      
+      // Real-time unread count listener
+      unsubscribeUnreadCount = subscribeToUnreadCount((count) => {
+        setUnreadCount(count)
+      })
+      
+      // Real-time system logs listener
+      unsubscribeLogs = subscribeToSystemLogs((logs) => {
+        setSystemLogs(logs)
+      })
+      
+      // Real-time pending kits listener
+      unsubscribePendingKits = subscribeToPendingKits((kits) => {
+        setPendingKits(kits)
+      })
+      
+      // Real-time pending kits count listener
+      unsubscribePendingKitsCount = subscribeToPendingKitsCount((count) => {
+        setPendingKitsCount(count)
+      })
+      
+      // Initialize categories if empty
+      initializeCategories()
+      
+      // Real-time categories listener
+      const unsubscribeCategories = subscribeToCategories((cats) => {
+        setCategories(cats)
+      })
+      
+      return () => {
+        if (unsubscribeFeedbacks) unsubscribeFeedbacks()
+        if (unsubscribeUnreadCount) unsubscribeUnreadCount()
+        if (unsubscribeLogs) unsubscribeLogs()
+        if (unsubscribePendingKits) unsubscribePendingKits()
+        if (unsubscribePendingKitsCount) unsubscribePendingKitsCount()
+        if (typeof unsubscribeCategories === 'function') unsubscribeCategories()
+      }
+    } catch (error) {
+      console.error('Firebase listeners kurulurken hata:', error)
+      // Fallback: Use polling if Firebase fails
+      const interval = setInterval(() => {
+        updateStats()
+      }, 10000)
+      
+      return () => clearInterval(interval)
+    }
+    
+    // Cleanup listeners on unmount
+    return () => {
+      if (unsubscribeFeedbacks) unsubscribeFeedbacks()
+      if (unsubscribeUnreadCount) unsubscribeUnreadCount()
+      if (unsubscribeLogs) unsubscribeLogs()
+      if (unsubscribePendingKits) unsubscribePendingKits()
+      if (unsubscribePendingKitsCount) unsubscribePendingKitsCount()
+    }
+  }, [navigate])
 
   // Toggle user expansion
   const toggleUserExpansion = (userId) => {
@@ -103,7 +234,7 @@ function Admin() {
     }, 500)
   }
 
-  // Download ads.txt
+  // Download ads.txt and save to public folder (for development)
   const handleDownloadAdsTxt = () => {
     const content = generateAdsTxt(adsenseSettings.publisherId)
     if (!content) {
@@ -111,6 +242,7 @@ function Admin() {
       return
     }
     
+    // Download the file
     const blob = new Blob([content], { type: 'text/plain' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -119,7 +251,20 @@ function Admin() {
     link.click()
     URL.revokeObjectURL(url)
     
-    alert('✅ ads.txt dosyası indirildi! Bunu sunucunuzun kök dizinine yükleyin.')
+    // Show detailed instructions
+    const message = `✅ ads.txt dosyası indirildi!\n\n` +
+      `📋 YAPILACAKLAR:\n` +
+      `1. İndirilen ads.txt dosyasını projenizin "public/" klasörüne kopyalayın\n` +
+      `2. npm run build komutunu çalıştırın\n` +
+      `3. Build sonrası dist/ klasöründe ads.txt dosyasının olduğunu kontrol edin\n` +
+      `4. Site yayına alındığında ads.txt dosyası otomatik olarak https://yoursite.com/ads.txt adresinde erişilebilir olacak\n\n` +
+      `⚠️ ÖNEMLİ: ads.txt dosyası site kök dizininde (/) olmalı: https://yoursite.com/ads.txt\n` +
+      `Dosya içeriği: ${content.trim()}`
+    
+    alert(message)
+    
+    // Add system log
+    addSystemLog('info', `ads.txt dosyası oluşturuldu ve indirildi: ${content.trim()}`)
   }
 
   // Handle logo upload
@@ -225,16 +370,26 @@ function Admin() {
   }
 
   // Handle mark as read
-  const handleMarkAsRead = (id) => {
-    markAsRead(id)
-    updateStats()
+  const handleMarkAsRead = async (id) => {
+    try {
+      await markAsRead(id)
+      // Real-time listener will automatically update the UI
+    } catch (error) {
+      console.error('Geri bildirim okundu işaretlenirken hata:', error)
+      alert('Geri bildirim güncellenirken bir hata oluştu.')
+    }
   }
 
   // Handle delete feedback
-  const handleDeleteFeedback = (id) => {
+  const handleDeleteFeedback = async (id) => {
     if (window.confirm('Bu mesajı silmek istediğinizden emin misiniz?')) {
-      deleteFeedback(id)
-      updateStats()
+      try {
+        await deleteFeedback(id)
+        // Real-time listener will automatically update the UI
+      } catch (error) {
+        console.error('Geri bildirim silinirken hata:', error)
+        alert('Geri bildirim silinirken bir hata oluştu.')
+      }
     }
   }
 
@@ -346,8 +501,12 @@ function Admin() {
   }, [navigate])
 
   // Logout fonksiyonu
-  const handleLogout = () => {
-    addSystemLog('info', 'Admin çıkış yaptı', 'Admin')
+  const handleLogout = async () => {
+    try {
+      await addSystemLog('info', 'Admin çıkış yaptı', 'Admin')
+    } catch (error) {
+      console.error('Sistem logu eklenirken hata:', error)
+    }
     localStorage.removeItem('isAdminLoggedIn')
     localStorage.removeItem('adminUsername')
     sessionStorage.removeItem('adminLastLogin')
@@ -403,6 +562,25 @@ function Admin() {
               {unreadCount > 0 && (
                 <span className="px-2 py-0.5 bg-red-500 text-white text-xs rounded-full font-bold">
                   {unreadCount}
+                </span>
+              )}
+            </button>
+            
+            <button
+              onClick={() => setActiveTab('pending-kits')}
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg font-poppins text-sm transition-all ${
+                activeTab === 'pending-kits'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-400 hover:text-white hover:bg-slate-700/50'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-base">⭐</span>
+                <span>Bekleyen Setler</span>
+              </div>
+              {pendingKitsCount > 0 && (
+                <span className="px-2 py-0.5 bg-yellow-500 text-white text-xs rounded-full font-bold">
+                  {pendingKitsCount}
                 </span>
               )}
             </button>
@@ -465,6 +643,18 @@ function Admin() {
             >
               <span className="text-base">💰</span>
               <span>Reklamlar</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('categories')}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg font-poppins text-sm transition-all ${
+                activeTab === 'categories'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-400 hover:text-white hover:bg-slate-700/50'
+              }`}
+            >
+              <span className="text-base">📂</span>
+              <span>Kategoriler</span>
             </button>
 
             <button
@@ -714,6 +904,7 @@ function Admin() {
                 <h2 className="text-3xl font-bold text-white font-poppins mb-2">Geri Bildirimler</h2>
                 <p className="text-gray-400 font-poppins">Kullanıcılardan gelen mesajlar</p>
               </div>
+              <div className="flex items-center gap-3">
               {unreadCount > 0 && (
                 <div className="flex items-center gap-2 px-4 py-2 bg-red-500/20 text-red-400 rounded-lg border border-red-500/30">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -722,6 +913,17 @@ function Admin() {
                   <span className="font-poppins font-semibold">{unreadCount} Okunmamış</span>
                 </div>
               )}
+                <button
+                  onClick={updateStats}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-500/20 text-blue-400 rounded-lg border border-blue-500/30 hover:bg-blue-500/30 transition-all font-poppins font-semibold"
+                  title="Mesajları Yenile"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Yenile
+                </button>
+              </div>
             </div>
 
             {feedbacks.length === 0 ? (
@@ -732,9 +934,20 @@ function Admin() {
                   </svg>
                 </div>
                 <h3 className="text-2xl font-bold text-white font-poppins mb-3">Henüz Mesaj Yok</h3>
-                <p className="text-gray-400 font-poppins">
+                <p className="text-gray-400 font-poppins mb-4">
                   Kullanıcılardan gelen geri bildirimler burada görünecek.
                 </p>
+                <div className="mt-6 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                  <p className="text-yellow-400 font-poppins text-sm">
+                    ⚠️ <strong>Önemli:</strong> Geri bildirimler tarayıcının localStorage'ında saklanır.
+                    <br />
+                    • Farklı tarayıcıdan gönderilen mesajlar burada görünmez
+                    <br />
+                    • Geri bildirim gönderdikten sonra yukarıdaki "Yenile" butonuna tıklayın
+                    <br />
+                    • Aynı tarayıcıdan ve aynı cihazdan gönderdiğinizden emin olun
+                  </p>
+                </div>
               </div>
             ) : (
               <div className="space-y-4">
@@ -750,15 +963,22 @@ function Admin() {
                     <div className="flex items-start justify-between gap-4 mb-4">
                       <div className="flex items-start gap-3 flex-1">
                         <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold font-poppins shadow-lg flex-shrink-0">
-                          {feedback.name.charAt(0).toUpperCase()}
+                          {feedback.name ? feedback.name.charAt(0).toUpperCase() : 'K'}
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-1">
-                            <h3 className="text-lg font-bold text-white font-poppins">{feedback.name}</h3>
+                            <h3 className="text-lg font-bold text-white font-poppins">{feedback.name || 'Kullanıcı'}</h3>
                             {feedback.status === 'unread' && (
                               <span className="px-2 py-0.5 bg-blue-500 text-white text-xs rounded-full font-poppins font-semibold">
                                 Yeni
                               </span>
+                            )}
+                            {feedback.rating > 0 && (
+                              <div className="flex items-center gap-1 px-2 py-0.5 bg-yellow-500/20 rounded-full border border-yellow-500/30">
+                                <span className="text-yellow-400 text-xs font-poppins font-semibold">
+                                  {feedback.rating} ⭐
+                                </span>
+                              </div>
                             )}
                           </div>
                           <p className="text-sm text-gray-400 font-poppins">{feedback.email}</p>
@@ -793,6 +1013,259 @@ function Admin() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Pending Kits Tab */}
+        {activeTab === 'pending-kits' && (
+          <div className="space-y-6">
+            {/* Page Header */}
+            <div className="mb-8 flex items-center justify-between">
+              <div>
+                <h2 className="text-3xl font-bold text-white font-poppins mb-2">Bekleyen Setler</h2>
+                <p className="text-gray-400 font-poppins">Onay bekleyen kelime setleri</p>
+              </div>
+              {pendingKitsCount > 0 && (
+                <div className="flex items-center gap-2 px-4 py-2 bg-yellow-500/20 text-yellow-400 rounded-lg border border-yellow-500/30">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="font-poppins font-semibold">{pendingKitsCount} Bekleyen</span>
+                </div>
+              )}
+            </div>
+
+            {/* Pending Kits List */}
+            {pendingKits.filter(kit => kit.status === 'pending').length === 0 ? (
+              <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl shadow-xl border border-slate-700 p-12 text-center">
+                <div className="w-20 h-20 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <span className="text-5xl">⭐</span>
+                </div>
+                <h3 className="text-2xl font-bold text-white font-poppins mb-3">Onay Bekleyen Set Yok</h3>
+                <p className="text-gray-400 font-poppins">
+                  Kullanıcılardan gelen yeni setler burada görünecektir.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {pendingKits
+                  .filter(kit => kit.status === 'pending')
+                  .map((kit) => {
+                    const submittedDate = kit.submittedAt?.toDate ? kit.submittedAt.toDate() : new Date(kit.submittedAt)
+                    return (
+                      <div
+                        key={kit.id}
+                        className="bg-slate-800/50 backdrop-blur-sm rounded-xl shadow-xl border-2 border-yellow-500/30 p-6 hover:border-yellow-500/50 transition-all"
+                      >
+                        <div className="flex items-start justify-between gap-6 mb-4">
+                          <div className="flex items-start gap-4 flex-1">
+                            <div className={`w-16 h-16 bg-gradient-to-br ${kit.color} rounded-xl flex items-center justify-center shadow-lg flex-shrink-0`}>
+                              <span className="text-3xl">{kit.icon}</span>
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3 mb-2">
+                                <h3 className="text-2xl font-bold text-white font-poppins">{kit.title}</h3>
+                                <span className="px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded-full text-xs font-poppins font-semibold border border-yellow-500/30">
+                                  Onay Bekliyor
+                                </span>
+                              </div>
+                              <p className="text-gray-300 font-poppins mb-2">{kit.description}</p>
+                              <div className="flex items-center gap-4 text-sm text-gray-400 font-poppins mb-2">
+                                <span>📝 {kit.words.length} kelime çifti</span>
+                                <span>👤 {kit.submittedBy || 'Kullanıcı'}</span>
+                                <span>🕒 {submittedDate.toLocaleDateString('tr-TR')}</span>
+                              </div>
+                              {kit.category && (
+                                <div className="inline-block">
+                                  <span className="px-2 py-1 bg-indigo-500/20 text-indigo-300 rounded text-xs font-poppins font-semibold border border-indigo-500/30">
+                                    {categories.find(c => (c.id || c.name) === kit.category)?.icon || defaultCategories.find(c => c.id === kit.category)?.icon || '📂'} {categories.find(c => (c.id || c.name) === kit.category)?.name || defaultCategories.find(c => c.id === kit.category)?.name || kit.category}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Kelime Listesi Önizleme */}
+                        <div className="mt-4 p-4 bg-slate-900/30 rounded-lg border border-slate-700 mb-4">
+                          <h4 className="text-sm font-semibold text-gray-400 font-poppins mb-3 uppercase">Kelime Önizleme (İlk 10):</h4>
+                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+                            {kit.words.slice(0, 10).map((word, idx) => (
+                              <div key={idx} className="p-2 bg-slate-800/50 rounded border border-slate-600">
+                                <div className="text-white font-poppins text-xs font-bold">{word.english}</div>
+                                <div className="text-gray-400 font-poppins text-xs">{word.turkish}</div>
+                              </div>
+                            ))}
+                          </div>
+                          {kit.words.length > 10 && (
+                            <p className="text-xs text-gray-500 font-poppins mt-2 text-center">
+                              + {kit.words.length - 10} kelime daha...
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Category Selection (if needed) */}
+                        {!kit.category && (
+                          <div className="mb-4 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                            <label className="block text-sm font-semibold text-yellow-300 font-poppins mb-2">
+                              📂 Kategori Seçin:
+                            </label>
+                            <select
+                              id={`category-${kit.id}`}
+                              className="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white font-poppins text-sm focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                              defaultValue="beginner"
+                            >
+                              {categories.length > 0 ? categories.map((cat) => (
+                                <option key={cat.id || cat.name} value={cat.id || cat.name} className="bg-slate-800">
+                                  {cat.icon} {cat.name}
+                                </option>
+                              )) : defaultCategories.map((cat) => (
+                                <option key={cat.id} value={cat.id} className="bg-slate-800">
+                                  {cat.icon} {cat.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+
+                        {/* Action Buttons */}
+                        <div className="flex items-center gap-3 pt-4 border-t border-slate-700">
+                          <button
+                            onClick={async () => {
+                              const selectedCategory = document.getElementById(`category-${kit.id}`)?.value || kit.category || 'beginner'
+                              const categoryName = categories.find(c => (c.id || c.name) === selectedCategory)?.name || defaultCategories.find(c => c.id === selectedCategory)?.name || selectedCategory
+                              if (window.confirm(`${kit.title} setini "${categoryName}" kategorisinde onaylamak istediğinizden emin misiniz?`)) {
+                                try {
+                                  const adminName = getAdminCredentials()?.username || 'Admin'
+                                  await approveKit(kit.id, adminName, selectedCategory)
+                                  alert(`✅ ${kit.title} başarıyla onaylandı! 🎉`)
+                                } catch (error) {
+                                  console.error('Set onaylanırken hata:', error)
+                                  alert('❌ Set onaylanırken bir hata oluştu.')
+                                }
+                              }
+                            }}
+                            className="flex-1 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg shadow-lg hover:shadow-xl transition-all font-poppins flex items-center justify-center gap-2"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            Onayla
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (window.confirm(`${kit.title} setini reddetmek istediğinizden emin misiniz?`)) {
+                                try {
+                                  const adminName = getAdminCredentials()?.username || 'Admin'
+                                  await rejectKit(kit.id, adminName)
+                                  alert(`ℹ️ ${kit.title} reddedildi.`)
+                                } catch (error) {
+                                  console.error('Set reddedilirken hata:', error)
+                                  alert('❌ Set reddedilirken bir hata oluştu.')
+                                }
+                              }
+                            }}
+                            className="flex-1 px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg shadow-lg hover:shadow-xl transition-all font-poppins flex items-center justify-center gap-2"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                            Reddet
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (window.confirm(`${kit.title} setini silmek istediğinizden emin misiniz?`)) {
+                                try {
+                                  const adminName = getAdminCredentials()?.username || 'Admin'
+                                  await deletePendingKit(kit.id, adminName)
+                                  alert(`ℹ️ ${kit.title} silindi.`)
+                                } catch (error) {
+                                  console.error('Set silinirken hata:', error)
+                                  alert('❌ Set silinirken bir hata oluştu.')
+                                }
+                              }
+                            }}
+                            className="px-4 py-3 bg-gray-600 hover:bg-gray-700 text-white font-bold rounded-lg shadow-lg hover:shadow-xl transition-all font-poppins"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+              </div>
+            )}
+
+            {/* Reviewed Kits (Onaylanan/Reddedilen) */}
+            {pendingKits.filter(kit => kit.status !== 'pending').length > 0 && (
+              <div className="mt-12">
+                <h3 className="text-2xl font-bold text-white font-poppins mb-6">Onaylanan/Reddedilen Setler</h3>
+                <div className="space-y-4">
+                  {pendingKits
+                    .filter(kit => kit.status !== 'pending')
+                    .map((kit) => {
+                      const reviewedDate = kit.reviewedAt?.toDate ? kit.reviewedAt.toDate() : new Date(kit.reviewedAt)
+                      return (
+                        <div
+                          key={kit.id}
+                          className={`bg-slate-800/50 backdrop-blur-sm rounded-xl shadow-xl border p-6 ${
+                            kit.status === 'approved'
+                              ? 'border-green-500/30 bg-green-500/5'
+                              : 'border-red-500/30 bg-red-500/5'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-6">
+                            <div className="flex items-start gap-4 flex-1">
+                              <div className={`w-16 h-16 bg-gradient-to-br ${kit.color} rounded-xl flex items-center justify-center shadow-lg flex-shrink-0`}>
+                                <span className="text-3xl">{kit.icon}</span>
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-3 mb-2">
+                                  <h3 className="text-xl font-bold text-white font-poppins">{kit.title}</h3>
+                                  <span className={`px-3 py-1 rounded-full text-xs font-poppins font-semibold border ${
+                                    kit.status === 'approved'
+                                      ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                                      : 'bg-red-500/20 text-red-400 border-red-500/30'
+                                  }`}>
+                                    {kit.status === 'approved' ? '✅ Onaylandı' : '❌ Reddedildi'}
+                                  </span>
+                                </div>
+                                <p className="text-gray-300 font-poppins mb-2">{kit.description}</p>
+                                <div className="flex items-center gap-4 text-sm text-gray-400 font-poppins">
+                                  <span>📝 {kit.words.length} kelime çifti</span>
+                                  <span>👤 {kit.reviewedBy || 'Admin'}</span>
+                                  <span>🕒 {reviewedDate.toLocaleDateString('tr-TR')}</span>
+                                </div>
+                              </div>
+                            </div>
+                            <button
+                              onClick={async () => {
+                                if (window.confirm('Bu seti silmek istediğinizden emin misiniz?')) {
+                                  try {
+                                    const adminName = getAdminCredentials()?.username || 'Admin'
+                                    await deletePendingKit(kit.id, adminName)
+                                    alert('ℹ️ Set silindi.')
+                                  } catch (error) {
+                                    console.error('Set silinirken hata:', error)
+                                    alert('❌ Set silinirken bir hata oluştu.')
+                                  }
+                                }
+                              }}
+                              className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-bold rounded-lg shadow-lg hover:shadow-xl transition-all font-poppins"
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                </div>
               </div>
             )}
           </div>
@@ -1704,115 +2177,56 @@ function Admin() {
             </div>
 
             {/* Status Card */}
-            <div className="bg-gradient-to-br from-green-600 to-emerald-600 rounded-xl p-6 shadow-2xl border border-green-500">
+            <div className="bg-gradient-to-br from-green-600 to-emerald-600 rounded-xl p-8 shadow-2xl border border-green-500">
               <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-xl font-bold text-white font-poppins mb-2">AdSense Durumu</h3>
-                  <p className="text-green-100 text-sm font-poppins">
-                    {adsenseSettings.enabled ? '✅ Aktif - Reklamlar gösteriliyor' : '⚠️ Pasif - Reklamlar gösterilmiyor'}
-                  </p>
-              </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    className="sr-only peer" 
-                    checked={adsenseSettings.enabled}
-                    onChange={(e) => updateAdsenseField('enabled', e.target.checked)}
-                  />
-                  <div className="w-14 h-7 bg-green-900/50 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-white rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[4px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-white/30"></div>
-                </label>
-            </div>
-            </div>
-
-            {/* Quick Setup Guide */}
-            <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-6">
-              <h3 className="text-lg font-bold text-blue-400 font-poppins mb-4 flex items-center gap-2">
-                <span>📘</span> Hızlı Kurulum Rehberi
-              </h3>
-              <div className="space-y-3 text-sm text-gray-300 font-poppins">
-                <div className="flex gap-3">
-                  <span className="text-blue-400 font-bold">1.</span>
-                  <div>
-                    <p className="font-semibold text-white">Google AdSense'e kaydolun</p>
-                    <p className="text-gray-400 text-xs">https://www.google.com/adsense</p>
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="text-3xl">{adsenseSettings.enabled ? '✅' : '⚠️'}</span>
+                    <div>
+                      <h3 className="text-2xl font-bold text-white font-poppins">Reklam Durumu</h3>
+                      <p className="text-green-100 text-sm font-poppins mt-1">
+                        {adsenseSettings.enabled 
+                          ? 'Reklamlar aktif - Site ziyaretçilerine gösteriliyor' 
+                          : 'Reklamlar pasif - Site ziyaretçilerine gösterilmiyor'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-4 pt-4 border-t border-green-400/30">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs text-green-100 font-poppins mb-1">Üst Banner</p>
+                        <p className="text-sm font-bold text-white font-poppins">
+                          {adsenseSettings.adSlots.headerBanner ? '✓ Eklendi' : '✗ Eklenmedi'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-green-100 font-poppins mb-1">Alt Banner</p>
+                        <p className="text-sm font-bold text-white font-poppins">
+                          {adsenseSettings.adSlots.footerBanner ? '✓ Eklendi' : '✗ Eklenmedi'}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div className="flex gap-3">
-                  <span className="text-blue-400 font-bold">2.</span>
-                  <p>Publisher ID'nizi (ca-pub-XXXXXXXX) aşağıya girin</p>
-                </div>
-                <div className="flex gap-3">
-                  <span className="text-blue-400 font-bold">3.</span>
-                  <p>Meta tag'i Google'dan alıp aşağıya yapıştırın</p>
-                </div>
-                <div className="flex gap-3">
-                  <span className="text-blue-400 font-bold">4.</span>
-                  <p>ads.txt dosyasını indirip sunucunuza yükleyin</p>
-                </div>
-                <div className="flex gap-3">
-                  <span className="text-blue-400 font-bold">5.</span>
-                  <p>Reklam kodlarını Google'dan alıp ilgili alanlara yapıştırın</p>
+                <div className="ml-6">
+                  <label className="relative inline-flex items-center cursor-pointer group">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer" 
+                      checked={adsenseSettings.enabled}
+                      onChange={(e) => updateAdsenseField('enabled', e.target.checked)}
+                    />
+                    <div className="w-16 h-8 bg-green-900/50 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-white rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-7 after:w-7 after:transition-all peer-checked:bg-white/30 shadow-lg"></div>
+                    <span className="ml-3 text-white font-bold font-poppins text-sm">
+                      {adsenseSettings.enabled ? 'AÇIK' : 'KAPALI'}
+                    </span>
+                  </label>
+                  <p className="text-xs text-green-100 font-poppins mt-2 text-center opacity-80">
+                    Tüm Reklamları {adsenseSettings.enabled ? 'Kapat' : 'Aç'}
+                  </p>
                 </div>
               </div>
             </div>
-
-            {/* Google Publisher ID */}
-            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl shadow-xl border border-slate-700 p-8">
-              <h3 className="text-2xl font-bold text-white font-poppins mb-3 flex items-center gap-3">
-                <span className="text-3xl">🆔</span> Google Publisher ID
-              </h3>
-              <p className="text-gray-400 font-poppins mb-6 text-sm">AdSense hesabınızdan alacağınız Publisher ID (ca-pub-XXXXXXXX)</p>
-              
-              <div>
-                <label className="block text-sm font-semibold text-gray-300 font-poppins mb-3">Publisher ID</label>
-                <input
-                  type="text"
-                  value={adsenseSettings.publisherId}
-                  onChange={(e) => updateAdsenseField('publisherId', e.target.value)}
-                  placeholder="ca-pub-1234567890123456"
-                  className="w-full px-5 py-3 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins font-mono focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
-                />
-              </div>
-              
-              {adsenseSettings.publisherId && (
-                <div className="mt-4">
-                  <button
-                    onClick={handleDownloadAdsTxt}
-                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-all font-poppins text-sm font-semibold"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    ads.txt İndir
-                  </button>
-                  <p className="text-xs text-gray-500 mt-2 font-poppins">
-                    ℹ️ Bu dosyayı sunucunuzun kök dizinine (public/) yükleyin
-              </p>
-            </div>
-              )}
-          </div>
-
-            {/* Meta Tag */}
-            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl shadow-xl border border-slate-700 p-8">
-              <h3 className="text-2xl font-bold text-white font-poppins mb-3 flex items-center gap-3">
-                <span className="text-3xl">📝</span> Meta Tag (Site Doğrulama)
-              </h3>
-              <p className="text-gray-400 font-poppins mb-6 text-sm">Google AdSense'den aldığınız meta tag'i buraya yapıştırın</p>
-              
-              <div>
-                <label className="block text-sm font-semibold text-gray-300 font-poppins mb-3">Meta Tag Kodu</label>
-                <textarea
-                  value={adsenseSettings.metaTag}
-                  onChange={(e) => updateAdsenseField('metaTag', e.target.value)}
-                  rows={3}
-                  placeholder='<meta name="google-adsense-account" content="ca-pub-1234567890123456">'
-                  className="w-full px-5 py-3 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins font-mono text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
-                />
-                <p className="text-xs text-gray-500 mt-2 font-poppins">
-                  ℹ️ Bu kod otomatik olarak sitenizin &lt;head&gt; bölümüne eklenecektir
-                </p>
-        </div>
-      </div>
 
             {/* Ad Slots */}
             <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl shadow-xl border border-slate-700 p-8">
@@ -1824,71 +2238,61 @@ function Admin() {
               <div className="space-y-6">
                 {/* Header Banner */}
                 <div className="p-6 bg-slate-900/30 rounded-lg border border-slate-600">
-                  <div className="flex items-center gap-3 mb-4">
-                    <span className="text-2xl">🔝</span>
-                    <div>
-                      <h4 className="text-lg font-semibold text-blue-400 font-poppins">Üst Banner (728x90)</h4>
-                      <p className="text-xs text-gray-400 font-poppins">Ana sayfada üst kısımda gösterilir</p>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">🔝</span>
+                      <div>
+                        <h4 className="text-lg font-semibold text-blue-400 font-poppins">Üst Banner (728x90)</h4>
+                        <p className="text-xs text-gray-400 font-poppins">Features bölümünden sonra, içerikten sonra gösterilir</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-poppins px-3 py-1 rounded-full ${
+                        adsenseSettings.adSlots.headerBanner 
+                          ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
+                          : 'bg-gray-500/20 text-gray-400 border border-gray-500/30'
+                      }`}>
+                        {adsenseSettings.adSlots.headerBanner ? '✓ Kod Eklendi' : 'Kod Yok'}
+                      </span>
                     </div>
                   </div>
                   <textarea
                     value={adsenseSettings.adSlots.headerBanner}
                     onChange={(e) => updateAdSlot('headerBanner', e.target.value)}
-                    rows={6}
+                    rows={8}
                     placeholder="Google AdSense'den aldığınız reklam kodunu buraya yapıştırın..."
-                    className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins font-mono text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
-                  />
-                </div>
-
-                {/* Sidebar */}
-                <div className="p-6 bg-slate-900/30 rounded-lg border border-slate-600">
-                  <div className="flex items-center gap-3 mb-4">
-                    <span className="text-2xl">◼️</span>
-                    <div>
-                      <h4 className="text-lg font-semibold text-purple-400 font-poppins">Yan Reklam (300x600)</h4>
-                      <p className="text-xs text-gray-400 font-poppins">Sayfanın yan tarafında gösterilir</p>
-                    </div>
-                  </div>
-                  <textarea
-                    value={adsenseSettings.adSlots.sidebar}
-                    onChange={(e) => updateAdSlot('sidebar', e.target.value)}
-                    rows={6}
-                    placeholder="Google AdSense'den aldığınız reklam kodunu buraya yapıştırın..."
-                    className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins font-mono text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
+                    className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins font-mono text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
                   />
                 </div>
 
                 {/* Footer Banner */}
                 <div className="p-6 bg-slate-900/30 rounded-lg border border-slate-600">
-                  <div className="flex items-center gap-3 mb-4">
-                    <span className="text-2xl">🔽</span>
-                    <div>
-                      <h4 className="text-lg font-semibold text-green-400 font-poppins">Alt Banner (970x90)</h4>
-                      <p className="text-xs text-gray-400 font-poppins">Sayfanın alt kısmında gösterilir</p>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">🔽</span>
+                      <div>
+                        <h4 className="text-lg font-semibold text-green-400 font-poppins">Alt Banner (970x90)</h4>
+                        <p className="text-xs text-gray-400 font-poppins">Sayfanın en altında, footer'dan önce gösterilir</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-poppins px-3 py-1 rounded-full ${
+                        adsenseSettings.adSlots.footerBanner 
+                          ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
+                          : 'bg-gray-500/20 text-gray-400 border border-gray-500/30'
+                      }`}>
+                        {adsenseSettings.adSlots.footerBanner ? '✓ Kod Eklendi' : 'Kod Yok'}
+                      </span>
                     </div>
                   </div>
                   <textarea
                     value={adsenseSettings.adSlots.footerBanner}
                     onChange={(e) => updateAdSlot('footerBanner', e.target.value)}
-                    rows={6}
+                    rows={8}
                     placeholder="Google AdSense'den aldığınız reklam kodunu buraya yapıştırın..."
-                    className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins font-mono text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
+                    className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins font-mono text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all resize-none"
                   />
                 </div>
-              </div>
-            </div>
-
-            {/* Preview & Info */}
-            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-6">
-              <h3 className="text-lg font-bold text-yellow-400 font-poppins mb-3 flex items-center gap-2">
-                <span>⚠️</span> Önemli Notlar
-              </h3>
-              <div className="space-y-2 text-sm text-gray-300 font-poppins">
-                <p>• Reklam kodları kaydedildikten sonra ana sayfada görünecektir</p>
-                <p>• ads.txt dosyasını mutlaka sunucunuza yükleyin (yoksa reklamlar çıkmaz)</p>
-                <p>• Meta tag otomatik olarak sitenize eklenecektir</p>
-                <p>• Değişiklikler anında geçerli olur (sayfa yenilemesi yeterli)</p>
-                <p>• AdSense onayı için Google'ın sitenizi incelemesi 1-2 hafta sürebilir</p>
               </div>
             </div>
 
@@ -1901,6 +2305,208 @@ function Admin() {
               >
                 {isSavingAds ? '⏳ Kaydediliyor...' : '💰 Reklam Ayarlarını Kaydet'}
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Categories Tab */}
+        {activeTab === 'categories' && (
+          <div className="space-y-6">
+            {/* Page Header */}
+            <div className="mb-8 flex items-center justify-between">
+              <div>
+                <h2 className="text-3xl font-bold text-white font-poppins mb-2">📂 Kategori Yönetimi</h2>
+                <p className="text-gray-400 font-poppins">Kelime setleri için kategorileri yönetin</p>
+              </div>
+            </div>
+
+            {/* Add New Category */}
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl shadow-xl border border-slate-700 p-8">
+              <h3 className="text-2xl font-bold text-white font-poppins mb-6 flex items-center gap-3">
+                <span className="text-3xl">➕</span> Yeni Kategori Ekle
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-300 font-poppins mb-2">İkon</label>
+                  <input
+                    type="text"
+                    value={newCategory.icon}
+                    onChange={(e) => setNewCategory({ ...newCategory, icon: e.target.value })}
+                    placeholder="📂"
+                    maxLength={2}
+                    className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins text-2xl text-center focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-300 font-poppins mb-2">Kategori Adı</label>
+                  <input
+                    type="text"
+                    value={newCategory.name}
+                    onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
+                    placeholder="Örn: Teknoloji"
+                    className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-300 font-poppins mb-2">Açıklama</label>
+                  <input
+                    type="text"
+                    value={newCategory.description}
+                    onChange={(e) => setNewCategory({ ...newCategory, description: e.target.value })}
+                    placeholder="Kategori açıklaması"
+                    className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+              <button
+                onClick={async () => {
+                  if (!newCategory.name.trim()) {
+                    alert('❌ Kategori adı boş olamaz!')
+                    return
+                  }
+                  try {
+                    setIsSavingCategory(true)
+                    const adminName = getAdminCredentials()?.username || 'Admin'
+                    await addCategory(newCategory, adminName)
+                    setNewCategory({ name: '', icon: '📂', description: '' })
+                    alert('✅ Kategori başarıyla eklendi! 🎉')
+                  } catch (error) {
+                    console.error('Kategori eklenirken hata:', error)
+                    alert('❌ Kategori eklenirken bir hata oluştu.')
+                  } finally {
+                    setIsSavingCategory(false)
+                  }
+                }}
+                disabled={isSavingCategory || !newCategory.name.trim()}
+                className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all font-poppins shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSavingCategory ? '⏳ Ekleniyor...' : '✅ Kategori Ekle'}
+              </button>
+            </div>
+
+            {/* Categories List */}
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl shadow-xl border border-slate-700 p-8">
+              <h3 className="text-2xl font-bold text-white font-poppins mb-6 flex items-center gap-3">
+                <span className="text-3xl">📋</span> Mevcut Kategoriler
+              </h3>
+              {categories.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="text-6xl mb-4">📂</div>
+                  <h3 className="text-xl font-bold text-white font-poppins mb-2">Henüz kategori yok</h3>
+                  <p className="text-gray-400 font-poppins">Yukarıdaki formu kullanarak yeni kategori ekleyin</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {categories.map((category) => (
+                    <div
+                      key={category.id || category.name}
+                      className="bg-slate-900/30 rounded-lg border border-slate-600 p-6 hover:border-purple-500/50 transition-all"
+                    >
+                      {editingCategory?.id === category.id ? (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-300 font-poppins mb-2">İkon</label>
+                            <input
+                              type="text"
+                              value={editingCategory.icon}
+                              onChange={(e) => setEditingCategory({ ...editingCategory, icon: e.target.value })}
+                              maxLength={2}
+                              className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600 rounded-lg text-white font-poppins text-2xl text-center focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-300 font-poppins mb-2">Kategori Adı</label>
+                            <input
+                              type="text"
+                              value={editingCategory.name}
+                              onChange={(e) => setEditingCategory({ ...editingCategory, name: e.target.value })}
+                              className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600 rounded-lg text-white font-poppins focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-300 font-poppins mb-2">Açıklama</label>
+                            <input
+                              type="text"
+                              value={editingCategory.description}
+                              onChange={(e) => setEditingCategory({ ...editingCategory, description: e.target.value })}
+                              className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600 rounded-lg text-white font-poppins focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-4 mb-4">
+                          <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center text-3xl shadow-lg">
+                            {category.icon}
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="text-xl font-bold text-white font-poppins mb-1">{category.name}</h4>
+                            <p className="text-gray-400 font-poppins text-sm">{category.description || 'Açıklama yok'}</p>
+                          </div>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-3">
+                        {editingCategory?.id === category.id ? (
+                          <>
+                            <button
+                              onClick={async () => {
+                                try {
+                                  setIsSavingCategory(true)
+                                  const adminName = getAdminCredentials()?.username || 'Admin'
+                                  await updateCategory(category.id, editingCategory, adminName)
+                                  setEditingCategory(null)
+                                  alert('✅ Kategori güncellendi! 🎉')
+                                } catch (error) {
+                                  console.error('Kategori güncellenirken hata:', error)
+                                  alert('❌ Kategori güncellenirken bir hata oluştu.')
+                                } finally {
+                                  setIsSavingCategory(false)
+                                }
+                              }}
+                              disabled={isSavingCategory}
+                              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-all font-poppins disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              💾 Kaydet
+                            </button>
+                            <button
+                              onClick={() => setEditingCategory(null)}
+                              disabled={isSavingCategory}
+                              className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg transition-all font-poppins disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              ❌ İptal
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => setEditingCategory({ ...category })}
+                              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-all font-poppins"
+                            >
+                              ✏️ Düzenle
+                            </button>
+                            <button
+                              onClick={async () => {
+                                if (window.confirm(`"${category.name}" kategorisini silmek istediğinizden emin misiniz?`)) {
+                                  try {
+                                    const adminName = getAdminCredentials()?.username || 'Admin'
+                                    await deleteCategory(category.id, adminName)
+                                    alert('✅ Kategori silindi.')
+                                  } catch (error) {
+                                    console.error('Kategori silinirken hata:', error)
+                                    alert('❌ Kategori silinirken bir hata oluştu.')
+                                  }
+                                }
+                              }}
+                              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-all font-poppins"
+                            >
+                              🗑️ Sil
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1994,9 +2600,9 @@ function Admin() {
                         <p className="text-gray-500 font-poppins text-sm mt-2">
                           /admin veya /login URL'lerine yapılan erişim denemeleri burada görünecek
                         </p>
-                      </div>
-                    )
-                  }
+    </div>
+  )
+}
 
                   return (
                     <div className="space-y-3">
@@ -2238,43 +2844,6 @@ function Admin() {
                       />
                       <span className="absolute right-3 top-2 text-gray-400 text-xs font-poppins">MB</span>
                     </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Bildirim Ayarları Card */}
-              <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl shadow-xl border border-slate-700 p-6">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 bg-orange-500/20 rounded-lg flex items-center justify-center">
-                    <span className="text-xl">🔔</span>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-white font-poppins">Bildirimler</h3>
-                    <p className="text-xs text-gray-400 font-poppins">E-posta ve sistem bildirimleri</p>
-                  </div>
-                </div>
-                
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between py-3 border-b border-slate-700/50">
-                    <div className="flex-1">
-                      <p className="font-poppins font-medium text-white text-sm">Sistem Uyarıları</p>
-                      <p className="text-xs text-gray-400 font-poppins mt-1">Hata ve uyarı mesajları</p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer ml-4">
-                      <input type="checkbox" className="sr-only peer" defaultChecked />
-                      <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                    </label>
-                  </div>
-
-                  <div className="flex items-center justify-between py-3">
-                    <div className="flex-1">
-                      <p className="font-poppins font-medium text-white text-sm">Haftalık Raporlar</p>
-                      <p className="text-xs text-gray-400 font-poppins mt-1">İstatistik özeti gönder</p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer ml-4">
-                      <input type="checkbox" className="sr-only peer" />
-                      <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                    </label>
                   </div>
                 </div>
               </div>

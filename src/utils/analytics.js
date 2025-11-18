@@ -1,41 +1,69 @@
-// Simple analytics system without user accounts
+// Analytics system with Firebase - Only statistics, not PDF files
 
-// Initialize analytics data if not exists
-const initAnalytics = () => {
-  if (!localStorage.getItem('analytics')) {
-    const initialData = {
+import { db, collection, addDoc, getDocs, query, orderBy, doc, getDoc, setDoc, increment, onSnapshot, serverTimestamp } from './firebase'
+
+// Initialize analytics data in Firebase if not exists
+const initAnalytics = async () => {
+  try {
+    const statsRef = doc(db, 'analytics', 'stats')
+    const statsSnap = await getDoc(statsRef)
+    
+    if (!statsSnap.exists()) {
+      // Initialize default stats
+      await setDoc(statsRef, {
       totalPDFs: 0,
       totalWords: 0,
-      history: [] // Array of {timestamp, words, type: 'color' or 'bw'}
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      })
     }
-    localStorage.setItem('analytics', JSON.stringify(initialData))
+  } catch (error) {
+    console.error('Analytics başlatılırken hata:', error)
   }
 }
 
-// Track PDF generation
-export const trackPDFGeneration = (wordCount, printerType = 'color', sessionId = null) => {
-  initAnalytics()
-  
-  const analytics = JSON.parse(localStorage.getItem('analytics'))
-  
-  analytics.totalPDFs++
-  analytics.totalWords += wordCount
-  analytics.history.push({
-    timestamp: new Date().toISOString(),
-    words: wordCount,
-    type: printerType,
-    sessionId: sessionId || sessionStorage.getItem('browserFingerprint') || 'unknown'
-  })
-  
-  localStorage.setItem('analytics', JSON.stringify(analytics))
+// Track PDF generation to Firebase
+export const trackPDFGeneration = async (wordCount, printerType = 'color', sessionId = null) => {
+  try {
+    // Initialize stats if not exists
+    await initAnalytics()
+    
+    const statsRef = doc(db, 'analytics', 'stats')
+    
+    // Update stats
+    await setDoc(statsRef, {
+      totalPDFs: increment(1),
+      totalWords: increment(wordCount),
+      updatedAt: serverTimestamp()
+    }, { merge: true })
+    
+    // Add to history (sadece istatistikler, PDF dosyası değil)
+    const historyItem = {
+      timestamp: serverTimestamp(),
+      words: wordCount,
+      type: printerType, // 'color' or 'bw'
+      sessionId: sessionId || sessionStorage.getItem('browserFingerprint') || 'unknown'
+    }
+    
+    await addDoc(collection(db, 'pdfHistory'), historyItem)
+    
+    // Update session activity
+    if (sessionId) {
+      const sessionRef = doc(db, 'sessions', sessionId)
+      await setDoc(sessionRef, {
+        lastActivity: serverTimestamp(),
+        timestamp: sessionId.includes('session_') ? new Date(sessionId.split('_')[1]).toISOString() : serverTimestamp()
+      }, { merge: true })
+    }
+  } catch (error) {
+    console.error('PDF oluşturma kaydedilirken hata:', error)
+  }
 }
 
 // Generate unique browser fingerprint (simple version)
 const getBrowserFingerprint = () => {
-  // Check if fingerprint exists in sessionStorage (unique per tab/window)
   let fingerprint = sessionStorage.getItem('browserFingerprint')
   if (!fingerprint) {
-    // Create unique ID for this browser tab
     fingerprint = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
     sessionStorage.setItem('browserFingerprint', fingerprint)
   }
@@ -44,156 +72,168 @@ const getBrowserFingerprint = () => {
 
 // Track active session
 export const trackActiveSession = () => {
-  const sessionId = getBrowserFingerprint()
-  const sessions = JSON.parse(localStorage.getItem('activeSessions') || '[]')
-  
-  // Check if this session already exists
-  const existingSessionIndex = sessions.findIndex(s => s.id === sessionId)
-  
-  const sessionData = {
-    id: sessionId,
-    timestamp: existingSessionIndex >= 0 ? sessions[existingSessionIndex].timestamp : new Date().toISOString(),
-    lastActivity: new Date().toISOString()
-  }
-  
-  // Clean old sessions (older than 5 minutes)
-  const fiveMinutesAgo = Date.now() - 5 * 60 * 1000
-  let activeSessions = sessions.filter(s => 
-    new Date(s.lastActivity).getTime() > fiveMinutesAgo
-  )
-  
-  // Update or add session
-  if (existingSessionIndex >= 0) {
-    activeSessions = activeSessions.map(s => 
-      s.id === sessionId ? sessionData : s
-    )
-  } else {
-    activeSessions.push(sessionData)
-  }
-  
-  localStorage.setItem('activeSessions', JSON.stringify(activeSessions))
-  
-  return sessionId
+  return getBrowserFingerprint()
 }
 
 // Update session activity
-export const updateSessionActivity = (sessionId) => {
-  const sessions = JSON.parse(localStorage.getItem('activeSessions') || '[]')
-  const updatedSessions = sessions.map(s => {
-    if (s.id === sessionId) {
-      return { ...s, lastActivity: new Date().toISOString() }
+export const updateSessionActivity = async (sessionId) => {
+  try {
+    if (sessionId) {
+      const sessionRef = doc(db, 'sessions', sessionId)
+      await setDoc(sessionRef, {
+        lastActivity: serverTimestamp()
+      }, { merge: true })
     }
-    return s
-  })
-  localStorage.setItem('activeSessions', JSON.stringify(updatedSessions))
+  } catch (error) {
+    console.error('Session güncellenirken hata:', error)
+  }
 }
 
-// Get active users count
-export const getActiveUsersCount = () => {
+// Get active users count from Firebase
+export const getActiveUsersCount = async () => {
+  try {
+    const q = query(collection(db, 'sessions'), orderBy('lastActivity', 'desc'))
+    const querySnapshot = await getDocs(q)
+    
+    const fiveMinutesAgo = Date.now() - 5 * 60 * 1000
+    let activeCount = 0
+    
+    querySnapshot.forEach((docSnap) => {
+      const data = docSnap.data()
+      if (data.lastActivity) {
+        const lastActivity = data.lastActivity.toDate ? data.lastActivity.toDate() : new Date(data.lastActivity)
+        if (lastActivity.getTime() > fiveMinutesAgo) {
+          activeCount++
+        }
+      }
+    })
+    
+    return activeCount
+  } catch (error) {
+    console.error('Aktif kullanıcı sayısı alınırken hata:', error)
+    // Fallback
   const sessions = JSON.parse(localStorage.getItem('activeSessions') || '[]')
   const fiveMinutesAgo = Date.now() - 5 * 60 * 1000
-  
-  const activeSessions = sessions.filter(s => 
-    new Date(s.lastActivity).getTime() > fiveMinutesAgo
-  )
-  
-  // Clean up old sessions
-  localStorage.setItem('activeSessions', JSON.stringify(activeSessions))
-  
-  return activeSessions.length
+    return sessions.filter(s => new Date(s.lastActivity).getTime() > fiveMinutesAgo).length
+  }
 }
 
-// Get real statistics
-export const getRealAnalytics = () => {
-  initAnalytics()
-  
-  const analytics = JSON.parse(localStorage.getItem('analytics'))
-  const history = analytics.history || []
+// Get real statistics from Firebase
+export const getRealAnalytics = async () => {
+  try {
+    // Get stats
+    const statsRef = doc(db, 'analytics', 'stats')
+    const statsSnap = await getDoc(statsRef)
+    
+    // Get history
+    const q = query(collection(db, 'pdfHistory'), orderBy('timestamp', 'desc'))
+    const historySnapshot = await getDocs(q)
+    
+    const history = []
+    historySnapshot.forEach((docSnap) => {
+      const data = docSnap.data()
+      history.push({
+        ...data,
+        timestamp: data.timestamp?.toDate ? data.timestamp.toDate().toISOString() : new Date().toISOString()
+      })
+    })
+    
+    const stats = statsSnap.exists() ? statsSnap.data() : { totalPDFs: 0, totalWords: 0 }
   
   const now = new Date()
+    const today = now.toDateString()
+    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+    const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+    const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)
+    const twoMonthsAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000)
   
-  // Today's PDFs
-  const today = now.toDateString()
   const todayPDFs = history.filter(item => {
-    return new Date(item.timestamp).toDateString() === today
+      const itemDate = new Date(item.timestamp)
+      return itemDate.toDateString() === today
   }).length
   
-  // This week's PDFs
-  const oneWeekAgo = new Date()
-  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
-  const weeklyPDFs = history.filter(item => 
-    new Date(item.timestamp) > oneWeekAgo
-  ).length
+    const weeklyPDFs = history.filter(item => {
+      const itemDate = new Date(item.timestamp)
+      return itemDate > oneWeekAgo
+    }).length
+    
+    const monthlyPDFs = history.filter(item => {
+      const itemDate = new Date(item.timestamp)
+      return itemDate > oneMonthAgo
+    }).length
   
-  // This month's PDFs
-  const oneMonthAgo = new Date()
-  oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
-  const monthlyPDFs = history.filter(item => 
-    new Date(item.timestamp) > oneMonthAgo
-  ).length
-  
-  // Previous week's PDFs (for growth calculation)
-  const twoWeeksAgo = new Date()
-  twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14)
   const previousWeekPDFs = history.filter(item => {
     const itemDate = new Date(item.timestamp)
     return itemDate > twoWeeksAgo && itemDate < oneWeekAgo
   }).length
   
-  // Previous month's PDFs (for growth calculation)
-  const twoMonthsAgo = new Date()
-  twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2)
   const previousMonthPDFs = history.filter(item => {
     const itemDate = new Date(item.timestamp)
     return itemDate > twoMonthsAgo && itemDate < oneMonthAgo
   }).length
   
-  // Calculate weekly growth
   const weeklyGrowth = previousWeekPDFs > 0 
     ? (((weeklyPDFs - previousWeekPDFs) / previousWeekPDFs) * 100).toFixed(1)
     : weeklyPDFs > 0 ? 100 : 0
   
-  // Calculate monthly growth
   const monthlyGrowth = previousMonthPDFs > 0 
     ? (((monthlyPDFs - previousMonthPDFs) / previousMonthPDFs) * 100).toFixed(1)
     : monthlyPDFs > 0 ? 100 : 0
   
-  // Get active users
-  const activeUsers = getActiveUsersCount()
-  
-  // Get unique users count
+    const activeUsers = await getActiveUsersCount()
   const uniqueSessions = [...new Set(history.map(h => h.sessionId).filter(id => id))]
   const totalUniqueUsers = uniqueSessions.length
   
   return {
-    totalPDFs: analytics.totalPDFs,
-    totalWords: analytics.totalWords,
+      totalPDFs: stats.totalPDFs || 0,
+      totalWords: stats.totalWords || 0,
     todayPDFs: todayPDFs,
     weeklyPDFs: weeklyPDFs,
     monthlyPDFs: monthlyPDFs,
     weeklyGrowth: parseFloat(weeklyGrowth),
     monthlyGrowth: parseFloat(monthlyGrowth),
-    avgWordsPerPDF: analytics.totalPDFs > 0 ? Math.floor(analytics.totalWords / analytics.totalPDFs) : 0,
-    activeUsers: activeUsers,
-    estimatedUsers: totalUniqueUsers // Now it's actual unique users, not estimated
+      avgWordsPerPDF: (stats.totalPDFs || 0) > 0 ? Math.floor((stats.totalWords || 0) / (stats.totalPDFs || 1)) : 0,
+      activeUsers: activeUsers,
+      estimatedUsers: totalUniqueUsers
+    }
+  } catch (error) {
+    console.error('Analytics alınırken hata:', error)
+    return {
+      totalPDFs: 0,
+      totalWords: 0,
+      todayPDFs: 0,
+      weeklyPDFs: 0,
+      monthlyPDFs: 0,
+      weeklyGrowth: 0,
+      monthlyGrowth: 0,
+      avgWordsPerPDF: 0,
+      activeUsers: 0,
+      estimatedUsers: 0
+    }
   }
 }
 
-// Get PDF history grouped by user
-export const getPDFHistoryByUser = () => {
-  initAnalytics()
-  
-  const analytics = JSON.parse(localStorage.getItem('analytics'))
-  const history = analytics.history || []
-  
-  // Create a map of unique sessions to user numbers
+// Get PDF history grouped by user from Firebase
+export const getPDFHistoryByUser = async () => {
+  try {
+    const q = query(collection(db, 'pdfHistory'), orderBy('timestamp', 'desc'))
+    const querySnapshot = await getDocs(q)
+    
+    const history = []
+    querySnapshot.forEach((docSnap) => {
+      const data = docSnap.data()
+      history.push({
+        ...data,
+        timestamp: data.timestamp?.toDate ? data.timestamp.toDate().toISOString() : new Date().toISOString()
+      })
+    })
+    
   const uniqueSessions = [...new Set(history.map(h => h.sessionId || 'unknown'))]
   const sessionToUserNumber = {}
   uniqueSessions.forEach((sessionId, index) => {
     sessionToUserNumber[sessionId] = index + 1
   })
   
-  // Group by sessionId
   const groupedBySession = {}
   history.forEach(item => {
     const sessionId = item.sessionId || 'unknown'
@@ -203,21 +243,19 @@ export const getPDFHistoryByUser = () => {
     groupedBySession[sessionId].push(item)
   })
   
-  // Convert to array and format
   return Object.entries(groupedBySession)
     .map(([sessionId, items]) => {
       const userNumber = sessionToUserNumber[sessionId]
       const totalPDFs = items.length
-      const totalWords = items.reduce((sum, item) => sum + item.words, 0)
-      const lastActivity = items.sort((a, b) => 
+        const totalWords = items.reduce((sum, item) => sum + (item.words || 0), 0)
+        const sortedItems = items.sort((a, b) => 
         new Date(b.timestamp) - new Date(a.timestamp)
-      )[0].timestamp
+        )
+        const lastActivity = sortedItems[0].timestamp
       
-      const pdfs = items
-        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-        .map((item, index) => ({
+        const pdfs = sortedItems.map((item, index) => ({
           id: index + 1,
-          words: item.words,
+          words: item.words || 0,
           type: item.type === 'color' ? 'Renkli' : 'Siyah-Beyaz',
           timestamp: item.timestamp,
           timeAgo: getTimeAgo(new Date(item.timestamp))
@@ -234,16 +272,27 @@ export const getPDFHistoryByUser = () => {
       }
     })
     .sort((a, b) => a.userId - b.userId)
+  } catch (error) {
+    console.error('PDF geçmişi alınırken hata:', error)
+    return []
+  }
 }
 
-// Get recent PDF history (last N items) - Kept for backwards compatibility
-export const getRecentPDFHistory = (limit = 10) => {
-  initAnalytics()
-  
-  const analytics = JSON.parse(localStorage.getItem('analytics'))
-  const history = analytics.history || []
-  
-  // Create a map of unique sessions to user numbers
+// Get recent PDF history from Firebase
+export const getRecentPDFHistory = async (limit = 10) => {
+  try {
+    const q = query(collection(db, 'pdfHistory'), orderBy('timestamp', 'desc'))
+    const querySnapshot = await getDocs(q)
+    
+    const history = []
+    querySnapshot.forEach((docSnap) => {
+      const data = docSnap.data()
+      history.push({
+        ...data,
+        timestamp: data.timestamp?.toDate ? data.timestamp.toDate().toISOString() : new Date().toISOString()
+      })
+    })
+    
   const uniqueSessions = [...new Set(history.map(h => h.sessionId || 'unknown'))]
   const sessionToUserNumber = {}
   uniqueSessions.forEach((sessionId, index) => {
@@ -262,12 +311,55 @@ export const getRecentPDFHistory = (limit = 10) => {
         id: index + 1,
         user: 'Kullanıcı #' + userNumber,
         sessionId: sessionId,
-        words: item.words,
+          words: item.words || 0,
         type: item.type === 'color' ? 'Renkli' : 'Siyah-Beyaz',
         createdAt: timeAgo,
-        fileSize: ((item.words * 0.05).toFixed(1)) + ' MB'
+          fileSize: ((item.words || 0) * 0.05).toFixed(1) + ' MB'
       }
     })
+  } catch (error) {
+    console.error('Son PDF geçmişi alınırken hata:', error)
+    return []
+  }
+}
+
+// Get total PDF count (for homepage display)
+export const getTotalPDFCount = async () => {
+  try {
+    const statsRef = doc(db, 'analytics', 'stats')
+    const statsSnap = await getDoc(statsRef)
+    
+    if (statsSnap.exists()) {
+      const stats = statsSnap.data()
+      return stats.totalPDFs || 0
+    }
+    return 0
+  } catch (error) {
+    console.error('Toplam PDF sayısı alınırken hata:', error)
+    return 0
+  }
+}
+
+// Real-time listener for total PDF count (for homepage)
+export const subscribeToTotalPDFCount = (callback) => {
+  try {
+    const statsRef = doc(db, 'analytics', 'stats')
+    
+    return onSnapshot(statsRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const stats = snapshot.data()
+        callback(stats.totalPDFs || 0)
+      } else {
+        callback(0)
+      }
+    }, (error) => {
+      console.error('Toplam PDF sayısı dinlenirken hata:', error)
+      callback(0)
+    })
+  } catch (error) {
+    console.error('Toplam PDF sayısı aboneliği başlatılırken hata:', error)
+    callback(0)
+  }
 }
 
 // Helper: Time ago formatter

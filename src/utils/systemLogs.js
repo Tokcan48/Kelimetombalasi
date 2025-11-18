@@ -1,75 +1,98 @@
-// System logs management - Only important events
+// System logs management with Firebase
 
-const LOGS_KEY = 'systemLogs'
+import { db, collection, addDoc, getDocs, query, orderBy, onSnapshot, serverTimestamp } from './firebase'
 
-// Initialize logs
-const initLogs = () => {
-  if (!localStorage.getItem(LOGS_KEY)) {
-    localStorage.setItem(LOGS_KEY, JSON.stringify([]))
+// Add a system log to Firebase
+export const addSystemLog = async (type, message, user = 'System') => {
+  try {
+    await addDoc(collection(db, 'systemLogs'), {
+      type: type, // 'success', 'warning', 'error', 'info'
+      message: message,
+      user: user,
+      timestamp: serverTimestamp()
+    })
+  } catch (error) {
+    console.error('Sistem logu eklenirken hata:', error)
   }
 }
 
-// Add a system log
-export const addSystemLog = (type, message, user = 'System') => {
-  initLogs()
-  
-  const logs = JSON.parse(localStorage.getItem(LOGS_KEY))
-  
-  const newLog = {
-    id: Date.now(),
-    type: type, // 'success', 'warning', 'error', 'info'
-    message: message,
-    user: user,
-    timestamp: new Date().toISOString()
+// Get system logs from Firebase
+export const getSystemLogs = async (limit = 10) => {
+  try {
+    const q = query(collection(db, 'systemLogs'), orderBy('timestamp', 'desc'))
+    const querySnapshot = await getDocs(q)
+    
+    const logs = []
+    querySnapshot.forEach((doc) => {
+      const data = doc.data()
+      logs.push({
+        id: doc.id,
+        type: data.type,
+        message: data.message,
+        user: data.user,
+        time: getTimeAgo(data.timestamp),
+        timestamp: data.timestamp
+      })
+    })
+    
+    return logs.slice(0, limit)
+  } catch (error) {
+    console.error('Sistem logları alınırken hata:', error)
+    return []
   }
-  
-  logs.unshift(newLog) // Add to the beginning
-  
-  // Keep only last 50 logs
-  if (logs.length > 50) {
-    logs.splice(50)
-  }
-  
-  localStorage.setItem(LOGS_KEY, JSON.stringify(logs))
 }
 
-// Get system logs
-export const getSystemLogs = (limit = 10) => {
-  initLogs()
-  
-  const logs = JSON.parse(localStorage.getItem(LOGS_KEY))
-  
-  return logs
-    .slice(0, limit)
-    .map(log => ({
-      id: log.id,
-      type: log.type,
-      message: log.message,
-      user: log.user,
-      time: getTimeAgo(new Date(log.timestamp))
-    }))
-}
-
-// Clear all logs
-export const clearSystemLogs = () => {
-  localStorage.setItem(LOGS_KEY, JSON.stringify([]))
+// Real-time listener for system logs
+export const subscribeToSystemLogs = (callback, limit = 10) => {
+  try {
+    const q = query(collection(db, 'systemLogs'), orderBy('timestamp', 'desc'))
+    
+    return onSnapshot(q, (snapshot) => {
+      const logs = []
+      snapshot.forEach((doc) => {
+        const data = doc.data()
+        logs.push({
+          id: doc.id,
+          type: data.type,
+          message: data.message,
+          user: data.user,
+          time: getTimeAgo(data.timestamp),
+          timestamp: data.timestamp
+        })
+      })
+      callback(logs.slice(0, limit))
+    }, (error) => {
+      console.error('Sistem logları dinlenirken hata:', error)
+      callback([])
+    })
+  } catch (error) {
+    console.error('Sistem logları aboneliği başlatılırken hata:', error)
+    callback([])
+  }
 }
 
 // Helper: Time ago formatter
 const getTimeAgo = (date) => {
-  const seconds = Math.floor((Date.now() - date.getTime()) / 1000)
+  // Firebase timestamp'i Date'e çevir
+  if (!date) return 'Bilinmiyor'
+  const dateObj = date?.toDate ? date.toDate() : new Date(date)
+  const seconds = Math.floor((Date.now() - dateObj.getTime()) / 1000)
   
   if (seconds < 60) return `${seconds} saniye önce`
   if (seconds < 3600) return `${Math.floor(seconds / 60)} dakika önce`
   if (seconds < 86400) return `${Math.floor(seconds / 3600)} saat önce`
   if (seconds < 2592000) return `${Math.floor(seconds / 86400)} gün önce`
-  return date.toLocaleDateString('tr-TR')
+  return dateObj.toLocaleDateString('tr-TR')
 }
 
 // Initialize with a welcome log if empty
-initLogs()
-const logs = JSON.parse(localStorage.getItem(LOGS_KEY))
-if (logs.length === 0) {
-  addSystemLog('info', 'Sistem başlatıldı ve çalışmaya hazır', 'System')
+export const initializeSystemLogs = async () => {
+  try {
+    const logs = await getSystemLogs(1)
+    if (logs.length === 0) {
+      await addSystemLog('info', 'Sistem başlatıldı ve çalışmaya hazır', 'System')
+    }
+  } catch (error) {
+    console.error('Sistem logları başlatılırken hata:', error)
+  }
 }
-

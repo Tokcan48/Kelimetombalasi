@@ -1,78 +1,163 @@
-// Feedback management system
+// Feedback management system with Firebase
 
-// Save feedback message
-export const saveFeedback = (name, email, message) => {
-  const feedbacks = JSON.parse(localStorage.getItem('feedbacks') || '[]')
+import { db, collection, addDoc, getDocs, query, orderBy, deleteDoc, doc, updateDoc, onSnapshot, serverTimestamp } from './firebase'
   
+// Save feedback message to Firebase
+export const saveFeedback = async (name, email, message, rating = 0) => {
+  try {
   const newFeedback = {
-    id: Date.now(),
     name: name,
     email: email,
     message: message,
-    createdAt: new Date().toISOString(),
-    status: 'unread' // 'unread', 'read', 'replied'
+      rating: rating,
+      status: 'unread', // 'unread', 'read', 'replied'
+      createdAt: serverTimestamp()
   }
   
-  feedbacks.push(newFeedback)
-  localStorage.setItem('feedbacks', JSON.stringify(feedbacks))
+    const docRef = await addDoc(collection(db, 'feedbacks'), newFeedback)
   
   // Add system log for new feedback
   try {
-    const systemLogs = JSON.parse(localStorage.getItem('systemLogs') || '[]')
-    systemLogs.unshift({
-      id: Date.now(),
+      await addDoc(collection(db, 'systemLogs'), {
       type: 'info',
-      message: `Yeni geri bildirim alındı: ${name}`,
+        message: `Yeni geri bildirim alındı: ${name} (${rating > 0 ? rating + ' ⭐' : 'Değerlendirme yok'})`,
       user: 'Kullanıcı',
-      timestamp: new Date().toISOString()
+        timestamp: serverTimestamp()
     })
-    if (systemLogs.length > 50) systemLogs.splice(50)
-    localStorage.setItem('systemLogs', JSON.stringify(systemLogs))
   } catch (e) {
-    // Ignore if error
+      console.error('System log eklenirken hata:', e)
   }
   
-  return newFeedback
+    return { id: docRef.id, ...newFeedback }
+  } catch (error) {
+    console.error('Geri bildirim kaydedilirken hata:', error)
+    throw error
+  }
 }
 
-// Get all feedbacks
-export const getAllFeedbacks = () => {
-  const feedbacks = JSON.parse(localStorage.getItem('feedbacks') || '[]')
-  return feedbacks.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+// Get all feedbacks from Firebase
+export const getAllFeedbacks = async () => {
+  try {
+    const q = query(collection(db, 'feedbacks'), orderBy('createdAt', 'desc'))
+    const querySnapshot = await getDocs(q)
+    
+    const feedbacks = []
+    querySnapshot.forEach((doc) => {
+      feedbacks.push({
+        id: doc.id,
+        ...doc.data()
+      })
+    })
+    
+    return feedbacks
+  } catch (error) {
+    console.error('Geri bildirimler alınırken hata:', error)
+    // Fallback to empty array if error
+    return []
+  }
 }
 
-// Get unread count
-export const getUnreadCount = () => {
-  const feedbacks = JSON.parse(localStorage.getItem('feedbacks') || '[]')
-  return feedbacks.filter(f => f.status === 'unread').length
+// Get unread count from Firebase
+export const getUnreadCount = async () => {
+  try {
+    const q = query(collection(db, 'feedbacks'), orderBy('createdAt', 'desc'))
+    const querySnapshot = await getDocs(q)
+    
+    let count = 0
+    querySnapshot.forEach((doc) => {
+      const data = doc.data()
+      if (data.status === 'unread') {
+        count++
+      }
+    })
+    
+    return count
+  } catch (error) {
+    console.error('Okunmamış mesaj sayısı alınırken hata:', error)
+    return 0
+  }
 }
 
-// Mark as read
-export const markAsRead = (id) => {
-  const feedbacks = JSON.parse(localStorage.getItem('feedbacks') || '[]')
-  const updated = feedbacks.map(f => 
-    f.id === id ? { ...f, status: 'read' } : f
-  )
-  localStorage.setItem('feedbacks', JSON.stringify(updated))
+// Mark feedback as read in Firebase
+export const markAsRead = async (id) => {
+  try {
+    const feedbackRef = doc(db, 'feedbacks', id)
+    await updateDoc(feedbackRef, {
+      status: 'read'
+    })
+  } catch (error) {
+    console.error('Geri bildirim okundu işaretlenirken hata:', error)
+    throw error
+  }
 }
 
-// Delete feedback
-export const deleteFeedback = (id) => {
-  const feedbacks = JSON.parse(localStorage.getItem('feedbacks') || '[]')
-  const updated = feedbacks.filter(f => f.id !== id)
-  localStorage.setItem('feedbacks', JSON.stringify(updated))
+// Delete feedback from Firebase
+export const deleteFeedback = async (id) => {
+  try {
+    await deleteDoc(doc(db, 'feedbacks', id))
+  } catch (error) {
+    console.error('Geri bildirim silinirken hata:', error)
+    throw error
+  }
+}
+
+// Real-time listener for feedbacks
+export const subscribeToFeedbacks = (callback) => {
+  try {
+    const q = query(collection(db, 'feedbacks'), orderBy('createdAt', 'desc'))
+    
+    return onSnapshot(q, (snapshot) => {
+      const feedbacks = []
+      snapshot.forEach((doc) => {
+        feedbacks.push({
+          id: doc.id,
+          ...doc.data()
+        })
+      })
+      callback(feedbacks)
+    }, (error) => {
+      console.error('Geri bildirimler dinlenirken hata:', error)
+      callback([])
+    })
+  } catch (error) {
+    console.error('Geri bildirim aboneliği başlatılırken hata:', error)
+    callback([])
+  }
+}
+
+// Real-time listener for unread count
+export const subscribeToUnreadCount = (callback) => {
+  try {
+    const q = query(collection(db, 'feedbacks'), orderBy('createdAt', 'desc'))
+    
+    return onSnapshot(q, (snapshot) => {
+      let count = 0
+      snapshot.forEach((doc) => {
+        const data = doc.data()
+        if (data.status === 'unread') {
+          count++
+        }
+      })
+      callback(count)
+    }, (error) => {
+      console.error('Okunmamış sayı dinlenirken hata:', error)
+      callback(0)
+    })
+  } catch (error) {
+    console.error('Okunmamış sayı aboneliği başlatılırken hata:', error)
+    callback(0)
+  }
 }
 
 // Format time ago
 export const getTimeAgo = (date) => {
-  const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000)
+  // Firebase timestamp'i Date'e çevir
+  const dateObj = date?.toDate ? date.toDate() : new Date(date)
+  const seconds = Math.floor((Date.now() - dateObj.getTime()) / 1000)
   
   if (seconds < 60) return `${seconds} saniye önce`
   if (seconds < 3600) return `${Math.floor(seconds / 60)} dakika önce`
   if (seconds < 86400) return `${Math.floor(seconds / 3600)} saat önce`
   if (seconds < 2592000) return `${Math.floor(seconds / 86400)} gün önce`
-  return new Date(date).toLocaleDateString('tr-TR')
+  return dateObj.toLocaleDateString('tr-TR')
 }
-
-
-

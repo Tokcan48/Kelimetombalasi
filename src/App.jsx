@@ -6,6 +6,7 @@ import Feedback from './Feedback'
 import Login from './Login'
 import LegalPage from './LegalPage'
 import Contact from './Contact'
+import ReadyKits from './ReadyKits'
 import NotFound from './NotFound'
 
 // 🔐 GÜVENLI ADMIN URL - Değiştirmek için sadece burayı düzenleyin
@@ -30,6 +31,7 @@ function App() {
         {/* Public Routes */}
         <Route path="/feedback" element={<Feedback />} />
         <Route path="/contact" element={<Contact />} />
+        <Route path="/ready-kits" element={<ReadyKits />} />
         <Route path="/privacy" element={<LegalPage />} />
         <Route path="/terms" element={<LegalPage />} />
         <Route path="/faq" element={<LegalPage />} />
