@@ -4,7 +4,6 @@ import { getRealAnalytics, getRecentPDFHistory, getPDFHistoryByUser } from './ut
 import { getSystemLogs, addSystemLog, subscribeToSystemLogs } from './utils/systemLogs'
 import { getAllFeedbacks, getUnreadCount, markAsRead, deleteFeedback, getTimeAgo, subscribeToFeedbacks, subscribeToUnreadCount } from './utils/feedback'
 import { getSiteContent, saveSiteContent, resetSiteContent } from './utils/siteContent'
-import { getAdSenseSettings, saveAdSenseSettings, generateAdsTxt } from './utils/adsense'
 import { getAdminCredentials, saveAdminCredentials } from './utils/adminAuth'
 import { getBrandingSettings, saveBrandingSettings, fileToBase64 } from './utils/branding'
 import { getPendingKits, getPendingKitsCount, approveKit, rejectKit, deletePendingKit, subscribeToPendingKits, subscribeToPendingKitsCount } from './utils/pendingKits'
@@ -35,8 +34,6 @@ function Admin() {
   const [siteContent, setSiteContent] = useState(getSiteContent())
   const [isSaving, setIsSaving] = useState(false)
   const [expandedUsers, setExpandedUsers] = useState(new Set())
-  const [adsenseSettings, setAdsenseSettings] = useState(getAdSenseSettings())
-  const [isSavingAds, setIsSavingAds] = useState(false)
   const [newUsername, setNewUsername] = useState('')
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -203,68 +200,6 @@ function Admin() {
       }
       return newSet
     })
-  }
-
-  // Update AdSense field
-  const updateAdsenseField = (field, value) => {
-    setAdsenseSettings(prev => ({
-      ...prev,
-      [field]: value
-    }))
-  }
-
-  // Update AdSense ad slot
-  const updateAdSlot = (slot, value) => {
-    setAdsenseSettings(prev => ({
-      ...prev,
-      adSlots: {
-        ...prev.adSlots,
-        [slot]: value
-      }
-    }))
-  }
-
-  // Save AdSense settings
-  const handleSaveAdsense = () => {
-    setIsSavingAds(true)
-    saveAdSenseSettings(adsenseSettings)
-    setTimeout(() => {
-      setIsSavingAds(false)
-      alert('✅ AdSense ayarları başarıyla kaydedildi!')
-    }, 500)
-  }
-
-  // Download ads.txt and save to public folder (for development)
-  const handleDownloadAdsTxt = () => {
-    const content = generateAdsTxt(adsenseSettings.publisherId)
-    if (!content) {
-      alert('⚠️ Lütfen önce Publisher ID girin!')
-      return
-    }
-    
-    // Download the file
-    const blob = new Blob([content], { type: 'text/plain' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = 'ads.txt'
-    link.click()
-    URL.revokeObjectURL(url)
-    
-    // Show detailed instructions
-    const message = `✅ ads.txt dosyası indirildi!\n\n` +
-      `📋 YAPILACAKLAR:\n` +
-      `1. İndirilen ads.txt dosyasını projenizin "public/" klasörüne kopyalayın\n` +
-      `2. npm run build komutunu çalıştırın\n` +
-      `3. Build sonrası dist/ klasöründe ads.txt dosyasının olduğunu kontrol edin\n` +
-      `4. Site yayına alındığında ads.txt dosyası otomatik olarak https://yoursite.com/ads.txt adresinde erişilebilir olacak\n\n` +
-      `⚠️ ÖNEMLİ: ads.txt dosyası site kök dizininde (/) olmalı: https://yoursite.com/ads.txt\n` +
-      `Dosya içeriği: ${content.trim()}`
-    
-    alert(message)
-    
-    // Add system log
-    addSystemLog('info', `ads.txt dosyası oluşturuldu ve indirildi: ${content.trim()}`)
   }
 
   // Handle logo upload
@@ -634,18 +569,6 @@ function Admin() {
             </button>
 
             <button
-              onClick={() => setActiveTab('ads')}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg font-poppins text-sm transition-all ${
-                activeTab === 'ads'
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-400 hover:text-white hover:bg-slate-700/50'
-              }`}
-            >
-              <span className="text-base">💰</span>
-              <span>Reklamlar</span>
-            </button>
-
-            <button
               onClick={() => setActiveTab('categories')}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg font-poppins text-sm transition-all ${
                 activeTab === 'categories'
@@ -937,17 +860,6 @@ function Admin() {
                 <p className="text-gray-400 font-poppins mb-4">
                   Kullanıcılardan gelen geri bildirimler burada görünecek.
                 </p>
-                <div className="mt-6 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-                  <p className="text-yellow-400 font-poppins text-sm">
-                    ⚠️ <strong>Önemli:</strong> Geri bildirimler tarayıcının localStorage'ında saklanır.
-                    <br />
-                    • Farklı tarayıcıdan gönderilen mesajlar burada görünmez
-                    <br />
-                    • Geri bildirim gönderdikten sonra yukarıdaki "Yenile" butonuna tıklayın
-                    <br />
-                    • Aynı tarayıcıdan ve aynı cihazdan gönderdiğinizden emin olun
-                  </p>
-                </div>
               </div>
             ) : (
               <div className="space-y-4">
@@ -1859,11 +1771,18 @@ function Admin() {
                       <textarea
                         value={siteContent.legalPages.faq.content}
                         onChange={(e) => updateLegalPage('faq', 'content', e.target.value)}
-                        rows={10}
-                        placeholder="Sık sorulan soruları ve cevaplarını buraya yazın..."
+                        rows={15}
+                        placeholder="Sık sorulan soruları ve cevaplarını buraya yazın. Format: Her soru-cevap çifti için soruyu yazın (soru işareti ile bitmeli), sonraki satırlara cevabı yazın. Sorular arasında boş satır bırakın.
+
+Örnek format:
+Kelime kartlarını nasıl kullanmalıyım?
+PDF'inizi indirip yazdırdıktan sonra kartları kesin. İngilizce tarafına bakarak Türkçe anlamını hatırlamaya çalışın.
+
+Word dosyası formatı nasıl olmalı?
+Word dosyanızda her satıra bir kelime çifti yazın. Format: cat: kedi"
                         className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-mono text-sm"
                       />
-                      <p className="text-xs text-gray-500 mt-2 font-poppins">💡 Bu sayfa /faq URL'inde görüntülenecektir</p>
+                      <p className="text-xs text-gray-500 mt-2 font-poppins">💡 Bu sayfa /faq URL'inde görüntülenecektir. Format: Soru (satır sonunda ?), alt satırlarda cevap, sorular arasında boş satır</p>
                     </div>
                   </div>
                 </div>
@@ -2153,157 +2072,6 @@ function Admin() {
                 className="px-12 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all font-poppins font-bold text-xl shadow-2xl hover:shadow-purple-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSavingBranding ? '⏳ Kaydediliyor...' : '🎨 Logo Ayarlarını Kaydet'}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Ads Tab */}
-        {activeTab === 'ads' && (
-          <div className="space-y-6">
-            {/* Page Header */}
-            <div className="mb-8 flex items-center justify-between">
-              <div>
-                <h2 className="text-3xl font-bold text-white font-poppins mb-2">💰 Reklam Yönetimi</h2>
-                <p className="text-gray-400 font-poppins">Google AdSense ayarlarınızı yapılandırın</p>
-              </div>
-              <button
-                onClick={handleSaveAdsense}
-                disabled={isSavingAds}
-                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all font-poppins text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
-              >
-                {isSavingAds ? 'Kaydediliyor...' : '💾 Kaydet'}
-              </button>
-            </div>
-
-            {/* Status Card */}
-            <div className="bg-gradient-to-br from-green-600 to-emerald-600 rounded-xl p-8 shadow-2xl border border-green-500">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-3">
-                    <span className="text-3xl">{adsenseSettings.enabled ? '✅' : '⚠️'}</span>
-                    <div>
-                      <h3 className="text-2xl font-bold text-white font-poppins">Reklam Durumu</h3>
-                      <p className="text-green-100 text-sm font-poppins mt-1">
-                        {adsenseSettings.enabled 
-                          ? 'Reklamlar aktif - Site ziyaretçilerine gösteriliyor' 
-                          : 'Reklamlar pasif - Site ziyaretçilerine gösterilmiyor'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-4 pt-4 border-t border-green-400/30">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-xs text-green-100 font-poppins mb-1">Üst Banner</p>
-                        <p className="text-sm font-bold text-white font-poppins">
-                          {adsenseSettings.adSlots.headerBanner ? '✓ Eklendi' : '✗ Eklenmedi'}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-green-100 font-poppins mb-1">Alt Banner</p>
-                        <p className="text-sm font-bold text-white font-poppins">
-                          {adsenseSettings.adSlots.footerBanner ? '✓ Eklendi' : '✗ Eklenmedi'}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="ml-6">
-                  <label className="relative inline-flex items-center cursor-pointer group">
-                    <input 
-                      type="checkbox" 
-                      className="sr-only peer" 
-                      checked={adsenseSettings.enabled}
-                      onChange={(e) => updateAdsenseField('enabled', e.target.checked)}
-                    />
-                    <div className="w-16 h-8 bg-green-900/50 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-white rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-7 after:w-7 after:transition-all peer-checked:bg-white/30 shadow-lg"></div>
-                    <span className="ml-3 text-white font-bold font-poppins text-sm">
-                      {adsenseSettings.enabled ? 'AÇIK' : 'KAPALI'}
-                    </span>
-                  </label>
-                  <p className="text-xs text-green-100 font-poppins mt-2 text-center opacity-80">
-                    Tüm Reklamları {adsenseSettings.enabled ? 'Kapat' : 'Aç'}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Ad Slots */}
-            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl shadow-xl border border-slate-700 p-8">
-              <h3 className="text-2xl font-bold text-white font-poppins mb-3 flex items-center gap-3">
-                <span className="text-3xl">📺</span> Reklam Alanları
-              </h3>
-              <p className="text-gray-400 font-poppins mb-6 text-sm">Google AdSense'den aldığınız reklam kodlarını ilgili alanlara yapıştırın</p>
-              
-              <div className="space-y-6">
-                {/* Header Banner */}
-                <div className="p-6 bg-slate-900/30 rounded-lg border border-slate-600">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">🔝</span>
-                      <div>
-                        <h4 className="text-lg font-semibold text-blue-400 font-poppins">Üst Banner (728x90)</h4>
-                        <p className="text-xs text-gray-400 font-poppins">Features bölümünden sonra, içerikten sonra gösterilir</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs font-poppins px-3 py-1 rounded-full ${
-                        adsenseSettings.adSlots.headerBanner 
-                          ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
-                          : 'bg-gray-500/20 text-gray-400 border border-gray-500/30'
-                      }`}>
-                        {adsenseSettings.adSlots.headerBanner ? '✓ Kod Eklendi' : 'Kod Yok'}
-                      </span>
-                    </div>
-                  </div>
-                  <textarea
-                    value={adsenseSettings.adSlots.headerBanner}
-                    onChange={(e) => updateAdSlot('headerBanner', e.target.value)}
-                    rows={8}
-                    placeholder="Google AdSense'den aldığınız reklam kodunu buraya yapıştırın..."
-                    className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins font-mono text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
-                  />
-                </div>
-
-                {/* Footer Banner */}
-                <div className="p-6 bg-slate-900/30 rounded-lg border border-slate-600">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">🔽</span>
-                      <div>
-                        <h4 className="text-lg font-semibold text-green-400 font-poppins">Alt Banner (970x90)</h4>
-                        <p className="text-xs text-gray-400 font-poppins">Sayfanın en altında, footer'dan önce gösterilir</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs font-poppins px-3 py-1 rounded-full ${
-                        adsenseSettings.adSlots.footerBanner 
-                          ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
-                          : 'bg-gray-500/20 text-gray-400 border border-gray-500/30'
-                      }`}>
-                        {adsenseSettings.adSlots.footerBanner ? '✓ Kod Eklendi' : 'Kod Yok'}
-                      </span>
-                    </div>
-                  </div>
-                  <textarea
-                    value={adsenseSettings.adSlots.footerBanner}
-                    onChange={(e) => updateAdSlot('footerBanner', e.target.value)}
-                    rows={8}
-                    placeholder="Google AdSense'den aldığınız reklam kodunu buraya yapıştırın..."
-                    className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins font-mono text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all resize-none"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Save Button at Bottom */}
-            <div className="sticky bottom-0 bg-gradient-to-t from-slate-900 to-transparent pt-6 pb-4 flex justify-center">
-              <button
-                onClick={handleSaveAdsense}
-                disabled={isSavingAds}
-                className="px-12 py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all font-poppins font-bold text-xl shadow-2xl hover:shadow-green-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSavingAds ? '⏳ Kaydediliyor...' : '💰 Reklam Ayarlarını Kaydet'}
               </button>
             </div>
           </div>

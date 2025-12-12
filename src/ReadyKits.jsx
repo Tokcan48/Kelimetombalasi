@@ -5,8 +5,12 @@ import { readyKits, categories as defaultCategories } from './utils/readyKits'
 import { subscribeToCategories } from './utils/categories'
 import { PDFDocument, rgb } from 'pdf-lib'
 import { getApprovedReadyKits, subscribeToApprovedReadyKits } from './utils/approvedKits'
+import { useAdSense } from './hooks/useAdSense'
 
 function ReadyKits() {
+  // Load AdSense only on content pages
+  useAdSense()
+
   const [downloading, setDownloading] = useState(null)
   const [approvedKits, setApprovedKits] = useState([])
   const [selectedCategory, setSelectedCategory] = useState('all')
@@ -148,19 +152,22 @@ function ReadyKits() {
             }
 
             // Draw text centered
-            let fontSize = 16
-            let textWidth = font.widthOfTextAtSize(text, fontSize)
+            let actualFontSize = 16
             const maxWidth = cardWidth * 0.9
+            let textWidth = font.widthOfTextAtSize(text, actualFontSize)
             
             if (textWidth > maxWidth) {
-              fontSize = (maxWidth / textWidth) * fontSize
-              textWidth = font.widthOfTextAtSize(text, fontSize)
+              actualFontSize = (maxWidth / textWidth) * actualFontSize
+              textWidth = font.widthOfTextAtSize(text, actualFontSize)
             }
             
+            const textX = x + (cardWidth - textWidth) / 2
+            const textY = y + (cardHeight / 2) - (actualFontSize * 0.35)
+            
             page.drawText(text, {
-              x: x + (cardWidth - textWidth) / 2,
-              y: y + (cardHeight - fontSize) / 2,
-              size: fontSize,
+              x: textX,
+              y: textY,
+              size: actualFontSize,
               font: font,
               color: rgb(0, 0, 0)
             })
@@ -170,17 +177,114 @@ function ReadyKits() {
         }
       }
 
-      // Generate pages for English and Turkish
+      // Türkçe sayfa çizimi (sütunları ters)
+      const drawTurkishPage = (page, startIndex, wordsToDraw) => {
+        const wordsOnThisPage = Math.min(wordsToDraw, wordsPerPage)
+        const actualRows = Math.ceil(wordsOnThisPage / wordsPerRow)
+        
+        let wordIndex = startIndex
+        
+        for (let row = 0; row < actualRows && wordIndex < startIndex + wordsOnThisPage; row++) {
+          const wordsInRow = Math.min(wordsPerRow, (startIndex + wordsOnThisPage) - wordIndex)
+          if (wordsInRow === 0) break
+          
+          // Bu satırın kelimelerini al
+          const rowWords = []
+          const rowStartIndex = wordIndex
+          for (let i = 0; i < wordsInRow; i++) {
+            rowWords.push(convertedWords[rowStartIndex + i])
+          }
+          
+          const rowWidth = (cardWidth * wordsInRow) + (gap * (wordsInRow - 1))
+          const startX = wordsInRow === wordsPerRow 
+            ? marginLeft + (usableWidth - rowWidth) / 2
+            : marginLeft
+          const y = pageHeight - marginTop - (row * (cardHeight + gap)) - cardHeight
+          
+          // Sütunları ters çevir (sağdan sola)
+          for (let col = 0; col < wordsInRow; col++) {
+            const word = rowWords[wordsInRow - 1 - col] // Sütunları ters çevir
+            const text = word.turkish
+            const x = startX + col * (cardWidth + gap)
+            const originalWordIndex = rowStartIndex + (wordsInRow - 1 - col)
+            
+            // Rectangle based on printer type
+            if (printerType === 'color') {
+              const colorPalette = [
+                rgb(0.4, 0.8, 1.0),   // Blue
+                rgb(1.0, 0.8, 0.4),   // Yellow
+                rgb(1.0, 0.6, 0.8),   // Pink
+                rgb(0.6, 1.0, 0.6),   // Green
+                rgb(1.0, 0.7, 0.4),   // Orange
+              ]
+              const borderPalette = [
+                rgb(0.2, 0.6, 0.9),
+                rgb(0.9, 0.6, 0.2),
+                rgb(0.9, 0.4, 0.6),
+                rgb(0.4, 0.9, 0.4),
+                rgb(0.9, 0.5, 0.2),
+              ]
+              const colorIndex = originalWordIndex % colorPalette.length
+              
+              page.drawRectangle({
+                x: x,
+                y: y,
+                width: cardWidth,
+                height: cardHeight,
+                color: colorPalette[colorIndex],
+                borderColor: borderPalette[colorIndex],
+                borderWidth: 0.5,
+              })
+            } else {
+              // Black and white
+              page.drawRectangle({
+                x: x,
+                y: y,
+                width: cardWidth,
+                height: cardHeight,
+                color: rgb(1, 1, 1), // White
+                borderColor: rgb(0, 0, 0), // Black
+                borderWidth: 0.5,
+              })
+            }
+
+            // Draw text centered
+            let actualFontSize = 16
+            const maxWidth = cardWidth * 0.9
+            let textWidth = font.widthOfTextAtSize(text, actualFontSize)
+            
+            if (textWidth > maxWidth) {
+              actualFontSize = (maxWidth / textWidth) * actualFontSize
+              textWidth = font.widthOfTextAtSize(text, actualFontSize)
+            }
+            
+            const textX = x + (cardWidth - textWidth) / 2
+            const textY = y + (cardHeight / 2) - (actualFontSize * 0.35)
+            
+            page.drawText(text, {
+              x: textX,
+              y: textY,
+              size: actualFontSize,
+              font: font,
+              color: rgb(0, 0, 0)
+            })
+          }
+          
+          wordIndex += wordsInRow
+        }
+      }
+
+      // İngilizce ve Türkçe sayfaları çift taraflı yazdırma için yan yana oluştur
       for (let startIndex = 0; startIndex < totalWords; startIndex += wordsPerPage) {
         const wordsInThisBatch = Math.min(wordsPerPage, totalWords - startIndex)
         
-        // English page
+        // İngilizce sayfa (ön yüz)
         const englishPage = pdfDoc.addPage([pageWidth, pageHeight])
         drawPage(englishPage, (pair) => pair.english, startIndex, wordsInThisBatch)
         
-        // Turkish page
+        // Türkçe sayfa (arka yüz) - hemen ardından, sütunlar ters
         const turkishPage = pdfDoc.addPage([pageWidth, pageHeight])
-        drawPage(turkishPage, (pair) => pair.turkish, startIndex, wordsInThisBatch)
+        drawTurkishPage(turkishPage, startIndex, wordsInThisBatch)
       }
 
       const pdfBytes = await pdfDoc.save()
@@ -234,7 +338,7 @@ function ReadyKits() {
       <main className="py-20">
         <div className="container mx-auto px-4">
           {/* Page Header */}
-          <div className="text-center mb-16">
+          <div className="text-center mb-12">
             <div className="inline-block mb-6 px-6 py-3 bg-white/80 backdrop-blur-sm rounded-full border border-indigo-200 shadow-lg">
               <span className="text-indigo-600 font-poppins text-sm font-semibold">⚡ Hazır Setler</span>
             </div>
@@ -244,6 +348,45 @@ function ReadyKits() {
             <p className="text-xl text-gray-600 font-poppins max-w-2xl mx-auto">
               Tek tıkla PDF indir! Haftanın günleri, sayılar, renkler ve daha fazlası...
             </p>
+          </div>
+
+          {/* Açıklayıcı İçerik */}
+          <div className="max-w-5xl mx-auto mb-16">
+            <div className="bg-gradient-to-br from-white to-indigo-50 rounded-2xl p-8 border-2 border-indigo-200 shadow-lg">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div>
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center">
+                      <span className="text-2xl">📚</span>
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 font-poppins">Hazır Kelime Setleri</h3>
+                  </div>
+                  <p className="text-gray-700 font-poppins leading-relaxed">
+                    Özenle seçilmiş ve kategorize edilmiş kelime setlerini tek tıkla indirebilirsiniz. Her set belirli bir konuya odaklanır (örneğin: haftanın günleri, renkler, hayvanlar) ve öğrenme sürecinizi kolaylaştırır. Setler, öğretmenler ve öğrenciler tarafından onaylanmış ve test edilmiştir.
+                  </p>
+                </div>
+                <div>
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-12 h-12 bg-purple-600 rounded-xl flex items-center justify-center">
+                      <span className="text-2xl">🎯</span>
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 font-poppins">Nasıl Kullanılır?</h3>
+                  </div>
+                  <p className="text-gray-700 font-poppins leading-relaxed">
+                    İstediğiniz seti seçin, renkli veya siyah-beyaz format seçeneğini belirleyin ve PDF'inizi indirin. PDF'i yazdırdıktan sonra kartları kesin ve öğrenmeye başlayın. Çift taraflı yazdırma seçeneği ile kartların arka yüzü otomatik olarak hizalanır.
+                  </p>
+                </div>
+              </div>
+              <div className="bg-white rounded-xl p-4 border border-indigo-200">
+                <h4 className="font-bold text-gray-900 font-poppins mb-2 flex items-center gap-2">
+                  <span>💡</span>
+                  <span>İpucu: Kendi Setinizi Oluşturun</span>
+                </h4>
+                <p className="text-sm text-gray-700 font-poppins leading-relaxed">
+                  Kendi kelime setlerinizi oluşturmak isterseniz, ana sayfadaki "Kelime Kartı Oluşturucu" bölümünü kullanabilirsiniz. Word dosyanızdan veya manuel olarak kelime girişi yaparak sınırsız sayıda özel set oluşturabilirsiniz. Oluşturduğunuz setleri toplulukla paylaşmak için admin onayına gönderebilirsiniz.
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* Category Filter & Content */}

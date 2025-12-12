@@ -7,8 +7,12 @@ import { trackPDFGeneration, trackActiveSession, updateSessionActivity } from '.
 import { getSiteContent } from './utils/siteContent'
 import { SECURE_LOGIN_URL } from './App'
 import { submitKitForApproval } from './utils/pendingKits'
+import { useAdSense } from './hooks/useAdSense'
 
 function Generator() {
+  // Load AdSense only on content pages
+  useAdSense()
+
   const [wordInput, setWordInput] = useState('')
   const [isLoadingWord, setIsLoadingWord] = useState(false)
   const [isLoadingPDF, setIsLoadingPDF] = useState(false)
@@ -168,6 +172,7 @@ function Generator() {
         const actualRows = Math.ceil(wordsOnThisPage / wordsPerRow)
         
         let wordIndex = startIndex
+        
         for (let row = 0; row < actualRows && wordIndex < startIndex + wordsOnThisPage; row++) {
           const wordsInRow = Math.min(wordsPerRow, (startIndex + wordsOnThisPage) - wordIndex)
           if (wordsInRow === 0) break
@@ -245,20 +250,111 @@ function Generator() {
         }
       }
       
-      // İngilizce sayfaları oluştur
-      for (let pageIndex = 0; pageIndex * wordsPerPage < totalWords; pageIndex++) {
-        const startIndex = pageIndex * wordsPerPage
-        const remainingWords = totalWords - startIndex
-        const page = pdfDoc.addPage([pageWidth, pageHeight])
-        drawPage(page, (pair) => pair.english, startIndex, remainingWords)
-      }
+      // Türkçe sayfa çizimi (sütunları ters)
+      const drawTurkishPage = (page, startIndex, wordsToDraw) => {
+        const wordsOnThisPage = Math.min(wordsToDraw, wordsPerPage)
+        const actualRows = Math.ceil(wordsOnThisPage / wordsPerRow)
+        
+        let wordIndex = startIndex
+        
+        for (let row = 0; row < actualRows && wordIndex < startIndex + wordsOnThisPage; row++) {
+          const wordsInRow = Math.min(wordsPerRow, (startIndex + wordsOnThisPage) - wordIndex)
+          if (wordsInRow === 0) break
+          
+          // Bu satırın kelimelerini al
+          const rowPairs = []
+          const rowStartIndex = wordIndex
+          for (let i = 0; i < wordsInRow; i++) {
+            rowPairs.push(convertedPairs[rowStartIndex + i])
+          }
+          
+          const rowWidth = (cardWidth * wordsInRow) + (gap * (wordsInRow - 1))
+          const startX = wordsInRow === wordsPerRow 
+            ? marginLeft + (usableWidth - rowWidth) / 2
+            : marginLeft
+          const y = pageHeight - marginTop - (row * (cardHeight + gap)) - cardHeight
+          
+          // Sütunları ters çevir (sağdan sola)
+          for (let col = 0; col < wordsInRow; col++) {
+            const pair = rowPairs[wordsInRow - 1 - col] // Sütunları ters çevir
+            const text = pair.turkish
+            const x = startX + col * (cardWidth + gap)
+            const originalWordIndex = rowStartIndex + (wordsInRow - 1 - col)
+            
+            if (activePrinterType === 'color') {
+              const colorPalette = [
+                rgb(0.4, 0.8, 1.0),
+                rgb(1.0, 0.8, 0.4),
+                rgb(1.0, 0.6, 0.8),
+                rgb(0.6, 1.0, 0.6),
+                rgb(1.0, 0.7, 0.4),
+              ]
+              const borderPalette = [
+                rgb(0.2, 0.6, 0.9),
+                rgb(0.9, 0.6, 0.2),
+                rgb(0.9, 0.4, 0.6),
+                rgb(0.4, 0.9, 0.4),
+                rgb(0.9, 0.5, 0.2),
+              ]
+              const colorIndex = originalWordIndex % colorPalette.length
+              page.drawRectangle({
+                x: x,
+                y: y,
+                width: cardWidth,
+                height: cardHeight,
+                color: colorPalette[colorIndex],
+                borderColor: borderPalette[colorIndex],
+                borderWidth: 0.5,
+              })
+            } else {
+              page.drawRectangle({
+                x: x,
+                y: y,
+                width: cardWidth,
+                height: cardHeight,
+                color: rgb(1, 1, 1),
+                borderColor: rgb(0, 0, 0),
+                borderWidth: 0.5,
+              })
+            }
 
-      // Türkçe sayfaları oluştur
+            let actualFontSize = fontSize
+            const maxWidth = cardWidth * 0.9
+            let textWidth = font.widthOfTextAtSize(text, actualFontSize)
+            
+            if (textWidth > maxWidth) {
+              actualFontSize = (maxWidth / textWidth) * fontSize
+              textWidth = font.widthOfTextAtSize(text, actualFontSize)
+            }
+            
+            const textX = x + (cardWidth - textWidth) / 2
+            const textY = y + (cardHeight / 2) - (actualFontSize * 0.35)
+            
+            page.drawText(text, {
+              x: textX,
+              y: textY,
+              size: actualFontSize,
+              font: font,
+              color: rgb(0, 0, 0),
+            })
+          }
+          
+          wordIndex += wordsInRow
+        }
+      }
+      
+      // İngilizce ve Türkçe sayfaları çift taraflı yazdırma için yan yana oluştur
       for (let pageIndex = 0; pageIndex * wordsPerPage < totalWords; pageIndex++) {
         const startIndex = pageIndex * wordsPerPage
         const remainingWords = totalWords - startIndex
-        const page = pdfDoc.addPage([pageWidth, pageHeight])
-        drawPage(page, (pair) => pair.turkish, startIndex, remainingWords)
+        
+        // İngilizce sayfa (ön yüz)
+        const englishPage = pdfDoc.addPage([pageWidth, pageHeight])
+        drawPage(englishPage, (pair) => pair.english, startIndex, remainingWords)
+        
+        // Türkçe sayfa (arka yüz) - hemen ardından
+        const turkishPage = pdfDoc.addPage([pageWidth, pageHeight])
+        drawTurkishPage(turkishPage, startIndex, remainingWords)
       }
 
       // PDF'i indir
@@ -380,6 +476,51 @@ function Generator() {
           <p className="text-lg text-gray-600 font-poppins max-w-2xl mx-auto">
             İngilizce-Türkçe kelime kartlarınızı kolayca PDF'e dönüştürün
           </p>
+        </div>
+
+        {/* Açıklayıcı İçerik Bölümü */}
+        <div className="max-w-5xl mx-auto mb-10">
+          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-8 border-2 border-blue-100 shadow-lg">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+              <div className="text-center">
+                <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center mx-auto mb-3">
+                  <span className="text-2xl">📝</span>
+                </div>
+                <h3 className="font-bold text-gray-900 font-poppins mb-2">Kelime Girişi</h3>
+                <p className="text-sm text-gray-600 font-poppins">
+                  Kelimeleri manuel olarak yazın veya Word dosyasından yükleyin. Format: <code className="bg-white px-2 py-1 rounded text-xs">kelime: anlam</code>
+                </p>
+              </div>
+              <div className="text-center">
+                <div className="w-12 h-12 bg-purple-600 rounded-xl flex items-center justify-center mx-auto mb-3">
+                  <span className="text-2xl">🎨</span>
+                </div>
+                <h3 className="font-bold text-gray-900 font-poppins mb-2">Format Seçimi</h3>
+                <p className="text-sm text-gray-600 font-poppins">
+                  Renkli veya siyah-beyaz yazıcınız için optimize edilmiş format seçin. Her iki seçenek de çift taraflı yazdırma için hazırdır.
+                </p>
+              </div>
+              <div className="text-center">
+                <div className="w-12 h-12 bg-green-600 rounded-xl flex items-center justify-center mx-auto mb-3">
+                  <span className="text-2xl">📥</span>
+                </div>
+                <h3 className="font-bold text-gray-900 font-poppins mb-2">PDF İndirme</h3>
+                <p className="text-sm text-gray-600 font-poppins">
+                  PDF'inizi indirin, yazdırın ve kartları kesin. Çift taraflı yazdırmada otomatik hizalama yapılır.
+                </p>
+              </div>
+            </div>
+            <div className="bg-white rounded-xl p-4 border border-blue-200">
+              <h4 className="font-bold text-gray-900 font-poppins mb-2 flex items-center gap-2">
+                <span>💡</span>
+                <span>İpucu: Word Dosyası Formatı</span>
+              </h4>
+              <p className="text-sm text-gray-700 font-poppins leading-relaxed">
+                Word dosyanızda her satıra bir kelime çifti yazın. Örnek: <code className="bg-gray-100 px-2 py-1 rounded">cat: kedi</code> veya <code className="bg-gray-100 px-2 py-1 rounded">apple - elma</code>. Sistem otomatik olarak doğru formatı algılayacaktır. 
+                Sınırsız sayıda kelime ekleyebilir, büyük kelime setleri oluşturabilirsiniz. PDF çıktısı A4 formatında, standart yazıcılarda mükemmel görünüm sağlayacak şekilde optimize edilmiştir.
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Ana Kart */}

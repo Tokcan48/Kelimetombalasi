@@ -56,7 +56,23 @@ const defaultContent = {
     },
     faq: {
       title: "Sıkça Sorulan Sorular",
-      content: "Bu sayfa yapım aşamasındadır. Sorularınız için lütfen geri bildirim sayfamızı kullanın."
+      content: `Kelime kartlarını nasıl kullanmalıyım?
+PDF'inizi indirip yazdırdıktan sonra kartları kesin. İngilizce tarafına bakarak Türkçe anlamını hatırlamaya çalışın, sonra kartı çevirip kontrol edin. Bildiğiniz kartları bir kenara ayırın ve bilmediklerinize odaklanın. Günde 15-20 dakika çalışma ile hızlı ilerleme kaydedebilirsiniz.
+
+Word dosyası formatı nasıl olmalı?
+Word dosyanızda her satıra bir kelime çifti yazın. Format şu şekilde olmalıdır: "İngilizce kelime = Türkçe anlam" veya "İngilizce kelime - Türkçe anlam". Örnek: "apple = elma" veya "apple - elma". Her satırda sadece bir kelime çifti bulunmalıdır.
+
+Ücretsiz mi? Gizli ücret var mı?
+Evet, tamamen ücretsizdir! Sınırsız sayıda PDF oluşturabilir, istediğiniz kadar kelime kartı hazırlayabilirsiniz. Kayıt veya üyelik gerektirmez. Tüm özellikler herkes için tamamen açıktır ve gizli bir ücret yoktur.
+
+Verilerim güvende mi?
+Evet, kesinlikle güvende! Tüm işlemler tarayıcınızda (bilgisayarınızda) gerçekleşir. Kelimeleriniz hiçbir sunucuya gönderilmez veya kaydedilmez. PDF oluşturma işlemi tamamen yerel olarak yapılır. Gizliliğiniz bizim için önceliklidir.
+
+Renkli ve siyah-beyaz yazıcı arasındaki fark nedir?
+Renkli yazıcı seçeneğinde, her kelime farklı renkli bir karta basılır. Bu, görsel olarak daha çekici ve hatırlamayı kolaylaştırır. Siyah-beyaz yazıcı seçeneği ise standart beyaz kartlar üzerine siyah yazı ile basılır ve herhangi bir yazıcıda kullanılabilir. Her iki format da öğrenme açısından etkilidir.
+
+Hazır setler nereden geliyor?
+Hazır setler, diğer kullanıcılarımız tarafından oluşturulup onay sürecinden geçen kelime setleridir. Belirli konulara göre kategorize edilmiş, kalite kontrolünden geçmiş ve herkes tarafından kullanılabilir durumda olan setlerdir. Siz de kendi setlerinizi oluşturup toplulukla paylaşabilirsiniz.`
     }
   }
 }

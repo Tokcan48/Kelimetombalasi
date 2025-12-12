@@ -3,11 +3,14 @@ import { useState, useEffect } from 'react'
 import confetti from 'canvas-confetti'
 import { getRealAnalytics, subscribeToTotalPDFCount } from './utils/analytics'
 import { getSiteContent } from './utils/siteContent'
-import { getAdSenseSettings } from './utils/adsense'
 import { getBrandingSettings, updateFavicon } from './utils/branding'
 import { SECURE_LOGIN_URL } from './App'
+import { useAdSense } from './hooks/useAdSense'
 
 function Home() {
+  // Load AdSense only on content pages
+  useAdSense()
+
   const [stats, setStats] = useState({
     estimatedUsers: 0,
     totalPDFs: 0,
@@ -15,7 +18,6 @@ function Home() {
   })
 
   const [content, setContent] = useState(getSiteContent())
-  const [adsenseSettings, setAdsenseSettings] = useState(getAdSenseSettings())
   const [branding, setBranding] = useState(getBrandingSettings())
 
   useEffect(() => {
@@ -45,7 +47,6 @@ function Home() {
     
     // Reload content from localStorage in case it was updated
     setContent(getSiteContent())
-    setAdsenseSettings(getAdSenseSettings())
     
     // Load branding settings
     const brandingSettings = getBrandingSettings()
@@ -62,25 +63,6 @@ function Home() {
     // Cleanup listener on unmount
     return () => {
       if (unsubscribe) unsubscribe()
-    }
-
-    // Add AdSense meta tag if exists
-    const adsSettings = getAdSenseSettings()
-    if (adsSettings.metaTag && adsSettings.enabled) {
-      // Remove existing AdSense meta tags
-      const existingMeta = document.querySelector('meta[name="google-adsense-account"]')
-      if (existingMeta) {
-        existingMeta.remove()
-      }
-
-      // Create temp div to parse HTML
-      const temp = document.createElement('div')
-      temp.innerHTML = adsSettings.metaTag.trim()
-      const metaTag = temp.querySelector('meta')
-      
-      if (metaTag) {
-        document.head.appendChild(metaTag)
-      }
     }
     
     // Add OG meta tags for social media
@@ -174,7 +156,7 @@ function Home() {
             <div className="inline-block mb-6 px-4 py-2 bg-white/80 backdrop-blur-sm rounded-full border border-gray-200 shadow-sm">
               <span className="text-sm font-semibold text-gray-700 font-poppins">✨ Ücretsiz & Kolay Kullanım</span>
             </div>
-            <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent font-poppins leading-tight">
+            <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent font-poppins leading-normal overflow-visible" style={{ textRendering: 'optimizeLegibility', lineHeight: '1.2' }}>
               {content.mainHeading}
             </h1>
             <p className="text-xl md:text-2xl mb-12 text-gray-700 font-poppins leading-relaxed max-w-2xl mx-auto">
@@ -291,32 +273,6 @@ function Home() {
           </div>
         </div>
       </section>
-
-      {/* Reklam Alanı 1 - Horizontal Banner (After Content) */}
-      {/* AdSense policy: Ads must come after content */}
-      {/* Features bölümünden hemen sonra - "Neden Bizi Seçmelisiniz?" bölümünden sonra */}
-      {(adsenseSettings.enabled && adsenseSettings.adSlots.headerBanner) ? (
-        <div className="bg-white border-y border-gray-200">
-          <div className="container mx-auto px-4 py-6">
-            <div className="max-w-5xl mx-auto text-center">
-              <p className="text-xs text-gray-500 font-poppins mb-2">REKLAM</p>
-              <div dangerouslySetInnerHTML={{ __html: adsenseSettings.adSlots.headerBanner }} />
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="bg-white border-y border-gray-200">
-          <div className="container mx-auto px-4 py-6">
-            <div className="max-w-5xl mx-auto text-center">
-              <p className="text-xs text-gray-500 font-poppins mb-2">REKLAM ALANI (728x90)</p>
-              <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
-                <p className="text-gray-400 font-poppins text-sm">Üst Banner Reklam Alanı</p>
-                <p className="text-xs text-gray-500 font-poppins mt-1">Admin panelinden reklam kodunu ekleyin</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Nasıl Çalışır */}
       <section id="how-it-works" className="py-20 bg-gradient-to-br from-gray-50 to-blue-50">
@@ -468,31 +424,112 @@ function Home() {
         </div>
       </section>
 
-      {/* Reklam Alanı 3 - Bottom Banner */}
-      {(adsenseSettings.enabled && adsenseSettings.adSlots.footerBanner) ? (
-        <section className="py-12 bg-gray-50">
-          <div className="container mx-auto px-4">
-            <div className="max-w-5xl mx-auto text-center">
-              <p className="text-xs text-gray-500 font-poppins mb-3">REKLAM</p>
-              <div dangerouslySetInnerHTML={{ __html: adsenseSettings.adSlots.footerBanner }} />
+      {/* Tips & Education Section */}
+      <section className="py-20 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
+        <div className="container mx-auto px-4">
+          <div className="max-w-6xl mx-auto">
+            <div className="text-center mb-12">
+              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 font-poppins">
+                Kelime Öğrenme İpuçları
+              </h2>
+              <p className="text-xl text-gray-600 font-poppins max-w-2xl mx-auto">
+                Flashcard tekniği ile İngilizce kelimeleri daha etkili öğrenin
+              </p>
             </div>
-          </div>
-        </section>
-      ) : (
-        <section className="py-12 bg-gray-50">
-          <div className="container mx-auto px-4">
-            <div className="max-w-5xl mx-auto">
-              <div className="bg-white rounded-2xl p-6 border border-gray-200 text-center shadow-md">
-                <p className="text-xs text-gray-500 font-poppins mb-3">REKLAM</p>
-                <div className="bg-gray-50 rounded-lg p-8 border-2 border-dashed border-gray-300">
-                  <p className="text-gray-400 font-poppins">AdSense Banner 970x90</p>
-                  <p className="text-xs text-gray-500 font-poppins mt-2">Admin panelinden reklam kodunu ekleyin</p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+              <div className="bg-white rounded-2xl p-8 shadow-lg border-2 border-indigo-100">
+                <div className="w-14 h-14 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center mb-6">
+                  <span className="text-3xl">📖</span>
                 </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-4 font-poppins">Flashcard Tekniği Nedir?</h3>
+                <p className="text-gray-700 font-poppins leading-relaxed mb-4">
+                  Flashcard (kelime kartı) tekniği, aktif hatırlama yöntemi kullanarak kelimeleri öğrenmenin en etkili yollarından biridir. Bir tarafında İngilizce kelime, diğer tarafında Türkçe anlamı bulunan kartlar sayesinde beyniniz aktif olarak çalışır ve kelimeleri kalıcı olarak öğrenirsiniz.
+                </p>
+                <p className="text-gray-700 font-poppins leading-relaxed">
+                  Bu teknik, özellikle uzun vadeli hafızaya kelime kaydetmek için idealdir ve binlerce öğrenci tarafından başarıyla kullanılmaktadır.
+                </p>
+              </div>
+
+              <div className="bg-white rounded-2xl p-8 shadow-lg border-2 border-purple-100">
+                <div className="w-14 h-14 bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl flex items-center justify-center mb-6">
+                  <span className="text-3xl">🎯</span>
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-4 font-poppins">En İyi Sonuçlar İçin</h3>
+                <ul className="space-y-3 text-gray-700 font-poppins leading-relaxed">
+                  <li className="flex items-start gap-3">
+                    <span className="text-indigo-600 font-bold mt-1">•</span>
+                    <span>Kartları günde 2-3 kez tekrar edin (sabah, öğle, akşam)</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <span className="text-indigo-600 font-bold mt-1">•</span>
+                    <span>Bildiğiniz kelimeleri bir kenara ayırın, bilmediklerinize odaklanın</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <span className="text-indigo-600 font-bold mt-1">•</span>
+                    <span>Her hafta yeni kelimeler ekleyin ve eski kelimeleri gözden geçirin</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <span className="text-indigo-600 font-bold mt-1">•</span>
+                    <span>Kelimeyi cümle içinde kullanarak pratik yapın</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="bg-white rounded-2xl p-8 shadow-lg border-2 border-pink-100">
+                <div className="w-14 h-14 bg-gradient-to-br from-pink-600 to-red-600 rounded-xl flex items-center justify-center mb-6">
+                  <span className="text-3xl">👨‍🏫</span>
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-4 font-poppins">Öğretmenler İçin</h3>
+                <p className="text-gray-700 font-poppins leading-relaxed mb-4">
+                  Öğrencileriniz için kelime setleri hazırlayın ve sınıfta kullanın. Word dosyanızdan toplu olarak kelime kartları oluşturabilir, renkli veya siyah-beyaz format seçeneklerinden yararlanabilirsiniz.
+                </p>
+                <p className="text-gray-700 font-poppins leading-relaxed">
+                  Kartları kesip öğrencilerinize dağıtarak etkileşimli dersler yapabilir, kelime öğrenmeyi eğlenceli hale getirebilirsiniz.
+                </p>
+              </div>
+
+              <div className="bg-white rounded-2xl p-8 shadow-lg border-2 border-blue-100">
+                <div className="w-14 h-14 bg-gradient-to-br from-blue-600 to-cyan-600 rounded-xl flex items-center justify-center mb-6">
+                  <span className="text-3xl">📚</span>
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-4 font-poppins">Öğrenciler İçin</h3>
+                <p className="text-gray-700 font-poppins leading-relaxed mb-4">
+                  Sınavlara hazırlanırken veya günlük İngilizce çalışmalarınızda kelime kartları size büyük kolaylık sağlar. Hazır setlerden faydalanabilir veya kendi kelimelerinizle özel setler oluşturabilirsiniz.
+                </p>
+                <p className="text-gray-700 font-poppins leading-relaxed">
+                  Çantanızda taşıyabileceğiniz boyutlarda hazırlanan kartlar sayesinde her yerde ve her zaman çalışma yapabilirsiniz.
+                </p>
               </div>
             </div>
           </div>
-        </section>
-      )}
+        </div>
+      </section>
+
+      {/* FAQ Link Section */}
+      <section className="py-12 bg-white">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto text-center">
+            <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl p-8 border-2 border-indigo-200 shadow-lg">
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4 font-poppins">
+                Sorularınız mı var?
+              </h2>
+              <p className="text-lg text-gray-600 font-poppins mb-6">
+                Sık sorulan soruların yanıtlarını görmek için tıklayın
+              </p>
+              <Link
+                to="/faq"
+                className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all font-poppins shadow-lg hover:shadow-xl transform hover:scale-105"
+              >
+                <span>❓ Sık Sorulan Sorular</span>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* CTA Section */}
       <section className="py-20 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white relative overflow-hidden">
