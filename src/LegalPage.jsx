@@ -1,6 +1,8 @@
 import { useParams, Link, useLocation } from 'react-router-dom'
+import { useEffect } from 'react'
 import { getSiteContent } from './utils/siteContent'
 import { SECURE_LOGIN_URL } from './App'
+import { setPageMeta } from './utils/seo'
 
 function LegalPage() {
   const { page } = useParams()
@@ -10,6 +12,25 @@ function LegalPage() {
   // Determine which page to show based on the URL
   const pageName = page || location.pathname.replace('/', '')
   const pageContent = content.legalPages[pageName]
+
+  // Set SEO meta tags
+  useEffect(() => {
+    const titles = {
+      privacy: 'Gizlilik Politikası - Kelime Tombalası',
+      terms: 'Kullanım Koşulları - Kelime Tombalası'
+    }
+    const descriptions = {
+      privacy: 'Kelime Tombalası gizlilik politikası. Kişisel verilerinizin korunması ve gizlilik haklarınız hakkında bilgi.',
+      terms: 'Kelime Tombalası kullanım koşulları. Platform kullanımı, kullanıcı hakları ve sorumlulukları hakkında bilgi.'
+    }
+    
+    setPageMeta({
+      title: titles[pageName] || 'Yasal Sayfalar - Kelime Tombalası',
+      description: descriptions[pageName] || 'Kelime Tombalası yasal sayfaları',
+      path: location.pathname,
+      robots: 'index, follow'
+    })
+  }, [location.pathname, pageName])
 
   // Check for maintenance mode
   if (content.siteStatus === 'maintenance') {

@@ -67,10 +67,10 @@ function Contact() {
           {/* Title */}
           <div className="text-center mb-12">
             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 font-poppins">
-              İletişim
+              {content.contactPage?.title || "İletişim"}
             </h2>
             <p className="text-xl text-gray-600 font-poppins">
-              Bizimle iletişime geçin, her zaman size yardımcı olmaktan mutluluk duyarız!
+              {content.contactPage?.subtitle || "Bizimle iletişime geçin, her zaman size yardımcı olmaktan mutluluk duyarız!"}
             </p>
           </div>
 
@@ -83,9 +83,9 @@ function Contact() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-3 font-poppins">E-posta</h3>
+              <h3 className="text-2xl font-bold text-gray-900 mb-3 font-poppins">{content.contactPage?.emailTitle || "E-posta"}</h3>
               <p className="text-gray-600 font-poppins mb-4">
-                Size en kısa sürede geri dönüş yapacağız.
+                {content.contactPage?.emailDescription || "Size en kısa sürede geri dönüş yapacağız."}
               </p>
               <a 
                 href={`mailto:${content.contactEmail}`}
@@ -102,9 +102,9 @@ function Contact() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                 </svg>
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-3 font-poppins">Telefon</h3>
+              <h3 className="text-2xl font-bold text-gray-900 mb-3 font-poppins">{content.contactPage?.phoneTitle || "Telefon"}</h3>
               <p className="text-gray-600 font-poppins mb-4">
-                Bizi arayarak hızlıca ulaşabilirsiniz.
+                {content.contactPage?.phoneDescription || "Bizi arayarak hızlıca ulaşabilirsiniz."}
               </p>
               <a 
                 href={`tel:${content.contactPhone.replace(/\s/g, '')}`}
@@ -119,7 +119,7 @@ function Contact() {
           {(content.socialMedia.facebook || content.socialMedia.twitter || content.socialMedia.instagram || content.socialMedia.linkedin) && (
             <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-200">
               <h3 className="text-2xl font-bold text-gray-900 mb-6 font-poppins text-center">
-                Sosyal Medyada Bizi Takip Edin
+                {content.contactPage?.socialTitle || "Sosyal Medyada Bizi Takip Edin"}
               </h3>
               <div className="flex justify-center gap-4 flex-wrap">
                 {content.socialMedia.facebook && (
@@ -169,7 +169,7 @@ function Contact() {
           {/* Feedback Link */}
           <div className="mt-12 text-center">
             <p className="text-gray-600 font-poppins mb-4">
-              Veya geri bildirim formunu kullanarak bize mesaj gönderin:
+              {content.contactPage?.feedbackText || "Veya geri bildirim formunu kullanarak bize mesaj gönderin:"}
             </p>
             <Link
               to="/feedback"
@@ -178,7 +178,7 @@ function Contact() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
               </svg>
-              Geri Bildirim Gönder
+              {content.contactPage?.feedbackButton || "Geri Bildirim Gönder"}
             </Link>
           </div>
 
@@ -191,7 +191,7 @@ function Contact() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
-              Ana Sayfaya Dön
+              {content.contactPage?.backButton || "Ana Sayfaya Dön"}
             </Link>
           </div>
         </div>

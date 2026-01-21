@@ -395,6 +395,22 @@ function Admin() {
     }))
   }
 
+  // Update page content (generic function for all pages)
+  const updatePageContent = (pageName, field, value) => {
+    setSiteContent(prev => ({
+      ...prev,
+      [pageName]: {
+        ...prev[pageName] || {},
+        [field]: value
+      }
+    }))
+  }
+
+  // Update generator page
+  const updateGeneratorPage = (field, value) => {
+    updatePageContent('generatorPage', field, value)
+  }
+
   // Load real analytics on mount and tab change
   useEffect(() => {
     updateStats()
@@ -552,8 +568,8 @@ function Admin() {
                   : 'text-gray-400 hover:text-white hover:bg-slate-700/50'
               }`}
             >
-              <span className="text-base">🌐</span>
-              <span>Site Bilgileri</span>
+              <span className="text-base">📝</span>
+              <span>Site İçerikleri</span>
             </button>
 
             <button
@@ -1341,8 +1357,8 @@ function Admin() {
             {/* Page Header */}
             <div className="mb-8 flex items-center justify-between">
               <div>
-                <h2 className="text-3xl font-bold text-white font-poppins mb-2">Site Bilgileri</h2>
-                <p className="text-gray-400 font-poppins">Sitenizin temel bilgilerini düzenleyin</p>
+                <h2 className="text-3xl font-bold text-white font-poppins mb-2">Site İçerik Yönetimi</h2>
+                <p className="text-gray-400 font-poppins">Sitedeki tüm metinleri düzenleyin</p>
               </div>
               <div className="flex gap-3">
                 <button
@@ -1358,6 +1374,41 @@ function Admin() {
                 >
                   {isSaving ? 'Kaydediliyor...' : '💾 Kaydet'}
                 </button>
+              </div>
+            </div>
+
+            {/* Page Selector */}
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl shadow-xl border border-slate-700 p-6 mb-6">
+              <label className="block text-sm font-semibold text-gray-300 font-poppins mb-3">Sayfa Seçin</label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {[
+                  { id: 'general', name: '🌐 Genel Bilgiler', icon: '🌐' },
+                  { id: 'home', name: '🏠 Ana Sayfa', icon: '🏠' },
+                  { id: 'generator', name: '📚 PDF Oluşturucu', icon: '📚' },
+                  { id: 'contact', name: '📧 İletişim', icon: '📧' },
+                  { id: 'feedback', name: '💬 Geri Bildirim', icon: '💬' },
+                  { id: 'readyKits', name: '📦 Hazır Setler', icon: '📦' },
+                  { id: 'faq', name: '❓ SSS', icon: '❓' },
+                  { id: 'legal', name: '⚖️ Yasal Sayfalar', icon: '⚖️' }
+                ].map(page => (
+                  <button
+                    key={page.id}
+                    onClick={() => {
+                      const element = document.getElementById(`page-${page.id}`)
+                      if (element) {
+                        element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                        setTimeout(() => {
+                          element.classList.add('ring-2', 'ring-blue-500')
+                          setTimeout(() => element.classList.remove('ring-2', 'ring-blue-500'), 2000)
+                        }, 500)
+                      }
+                    }}
+                    className="px-4 py-3 bg-slate-900/50 hover:bg-slate-900 border border-slate-600 hover:border-blue-500 rounded-lg transition-all font-poppins text-sm text-gray-300 hover:text-white text-left"
+                  >
+                    <span className="text-lg mr-2">{page.icon}</span>
+                    <span>{page.name.replace(/^[^\s]+\s/, '')}</span>
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -1679,12 +1730,480 @@ function Admin() {
               </div>
             </div>
 
+            {/* Ana Sayfa İçeriği */}
+            <div id="page-home" className="bg-slate-800/50 backdrop-blur-sm rounded-xl shadow-xl border border-slate-700 p-8">
+              <h3 className="text-2xl font-bold text-white font-poppins mb-3 flex items-center gap-3">
+                <span className="text-3xl">🏠</span> Ana Sayfa İçeriği
+              </h3>
+              <p className="text-gray-400 font-poppins mb-6 text-sm">Ana sayfadaki tüm metinleri düzenleyin</p>
+              
+              <div className="space-y-6">
+                {/* Hero Section */}
+                <div className="p-6 bg-slate-900/30 rounded-lg border border-slate-600">
+                  <h4 className="text-lg font-semibold text-blue-400 font-poppins mb-4">Hero Bölümü</h4>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-300 font-poppins mb-2">Badge Metni</label>
+                      <input
+                        type="text"
+                        value={siteContent.homePage?.heroBadge || ""}
+                        onChange={(e) => updatePageContent('homePage', 'heroBadge', e.target.value)}
+                        className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins text-sm"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {[1, 2, 3].map(num => (
+                        <div key={num}>
+                          <label className="block text-sm font-semibold text-gray-300 font-poppins mb-2">Buton {num}</label>
+                          <input
+                            type="text"
+                            value={siteContent.homePage?.[`ctaButton${num}`] || ""}
+                            onChange={(e) => updatePageContent('homePage', `ctaButton${num}`, e.target.value)}
+                            className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins text-sm"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Features */}
+                <div className="p-6 bg-slate-900/30 rounded-lg border border-slate-600">
+                  <h4 className="text-lg font-semibold text-purple-400 font-poppins mb-4">Özellikler Bölümü</h4>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-300 font-poppins mb-2">Başlık</label>
+                        <input
+                          type="text"
+                          value={siteContent.homePage?.featuresTitle || ""}
+                          onChange={(e) => updatePageContent('homePage', 'featuresTitle', e.target.value)}
+                          className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-300 font-poppins mb-2">Alt Başlık</label>
+                        <input
+                          type="text"
+                          value={siteContent.homePage?.featuresSubtitle || ""}
+                          onChange={(e) => updatePageContent('homePage', 'featuresSubtitle', e.target.value)}
+                          className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {[1, 2, 3].map(num => (
+                        <div key={num} className="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+                          <label className="block text-sm font-semibold text-gray-300 font-poppins mb-2">Özellik {num} Başlık</label>
+                          <input
+                            type="text"
+                            value={siteContent.homePage?.[`feature${num}Title`] || ""}
+                            onChange={(e) => updatePageContent('homePage', `feature${num}Title`, e.target.value)}
+                            className="w-full px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins text-xs mb-2"
+                          />
+                          <label className="block text-sm font-semibold text-gray-300 font-poppins mb-2">Özellik {num} Açıklama</label>
+                          <textarea
+                            value={siteContent.homePage?.[`feature${num}Description`] || ""}
+                            onChange={(e) => updatePageContent('homePage', `feature${num}Description`, e.target.value)}
+                            rows={3}
+                            className="w-full px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins text-xs"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* How It Works */}
+                <div className="p-6 bg-slate-900/30 rounded-lg border border-slate-600">
+                  <h4 className="text-lg font-semibold text-green-400 font-poppins mb-4">Nasıl Çalışır Bölümü</h4>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-300 font-poppins mb-2">Başlık</label>
+                        <input
+                          type="text"
+                          value={siteContent.homePage?.howItWorksTitle || ""}
+                          onChange={(e) => updatePageContent('homePage', 'howItWorksTitle', e.target.value)}
+                          className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-300 font-poppins mb-2">Alt Başlık</label>
+                        <input
+                          type="text"
+                          value={siteContent.homePage?.howItWorksSubtitle || ""}
+                          onChange={(e) => updatePageContent('homePage', 'howItWorksSubtitle', e.target.value)}
+                          className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {[1, 2, 3].map(num => (
+                        <div key={num} className="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+                          <label className="block text-sm font-semibold text-gray-300 font-poppins mb-2">Adım {num} Başlık</label>
+                          <input
+                            type="text"
+                            value={siteContent.homePage?.[`step${num}Title`] || ""}
+                            onChange={(e) => updatePageContent('homePage', `step${num}Title`, e.target.value)}
+                            className="w-full px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins text-xs mb-2"
+                          />
+                          <label className="block text-sm font-semibold text-gray-300 font-poppins mb-2">Adım {num} Açıklama</label>
+                          <textarea
+                            value={siteContent.homePage?.[`step${num}Description`] || ""}
+                            onChange={(e) => updatePageContent('homePage', `step${num}Description`, e.target.value)}
+                            rows={2}
+                            className="w-full px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins text-xs"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Testimonials */}
+                <div className="p-6 bg-slate-900/30 rounded-lg border border-slate-600">
+                  <h4 className="text-lg font-semibold text-yellow-400 font-poppins mb-4">Kullanıcı Yorumları</h4>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-300 font-poppins mb-2">Başlık</label>
+                        <input
+                          type="text"
+                          value={siteContent.homePage?.testimonialsTitle || ""}
+                          onChange={(e) => updatePageContent('homePage', 'testimonialsTitle', e.target.value)}
+                          className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-300 font-poppins mb-2">Alt Başlık</label>
+                        <input
+                          type="text"
+                          value={siteContent.homePage?.testimonialsSubtitle || ""}
+                          onChange={(e) => updatePageContent('homePage', 'testimonialsSubtitle', e.target.value)}
+                          className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {[1, 2, 3].map(num => (
+                        <div key={num} className="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+                          <label className="block text-sm font-semibold text-gray-300 font-poppins mb-2">Yorum {num} Metni</label>
+                          <textarea
+                            value={siteContent.homePage?.[`testimonial${num}Text`] || ""}
+                            onChange={(e) => updatePageContent('homePage', `testimonial${num}Text`, e.target.value)}
+                            rows={3}
+                            className="w-full px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins text-xs mb-2"
+                          />
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-400 font-poppins mb-1">İsim</label>
+                              <input
+                                type="text"
+                                value={siteContent.homePage?.[`testimonial${num}Name`] || ""}
+                                onChange={(e) => updatePageContent('homePage', `testimonial${num}Name`, e.target.value)}
+                                className="w-full px-2 py-1 bg-slate-900/50 border border-slate-600 rounded text-white font-poppins text-xs"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-400 font-poppins mb-1">Rol</label>
+                              <input
+                                type="text"
+                                value={siteContent.homePage?.[`testimonial${num}Role`] || ""}
+                                onChange={(e) => updatePageContent('homePage', `testimonial${num}Role`, e.target.value)}
+                                className="w-full px-2 py-1 bg-slate-900/50 border border-slate-600 rounded text-white font-poppins text-xs"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Generator Sayfası İçeriği */}
+            <div id="page-generator" className="bg-slate-800/50 backdrop-blur-sm rounded-xl shadow-xl border border-slate-700 p-8">
+              <h3 className="text-2xl font-bold text-white font-poppins mb-3 flex items-center gap-3">
+                <span className="text-3xl">📚</span> Generator Sayfası İçeriği
+              </h3>
+              <p className="text-gray-400 font-poppins mb-6 text-sm">PDF Oluşturucu sayfasındaki metinleri düzenleyin</p>
+              
+              <div className="space-y-6">
+                {/* Başlık ve Alt Başlık */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-300 font-poppins mb-3">Sayfa Başlığı</label>
+                    <input
+                      type="text"
+                      value={siteContent.generatorPage?.title || ""}
+                      onChange={(e) => updateGeneratorPage('title', e.target.value)}
+                      placeholder="Örn: Kelime Kartı Oluşturucu"
+                      className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-300 font-poppins mb-3">Alt Başlık</label>
+                    <input
+                      type="text"
+                      value={siteContent.generatorPage?.subtitle || ""}
+                      onChange={(e) => updateGeneratorPage('subtitle', e.target.value)}
+                      placeholder="Örn: İngilizce-Türkçe kelime kartlarınızı kolayca PDF'e dönüştürün"
+                      className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    />
+                  </div>
+                </div>
+
+                {/* Eğitim İçeriği */}
+                <div className="p-6 bg-slate-900/30 rounded-lg border border-slate-600">
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="text-2xl">📖</span>
+                    <h4 className="text-xl font-semibold text-blue-400 font-poppins">Eğitim İçeriği</h4>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-300 font-poppins mb-3">Eğitim Başlığı</label>
+                      <input
+                        type="text"
+                        value={siteContent.generatorPage?.educationTitle || ""}
+                        onChange={(e) => updateGeneratorPage('educationTitle', e.target.value)}
+                        placeholder="Örn: Kelime Kartları ile Etkili İngilizce Öğrenme Yöntemleri"
+                        className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-300 font-poppins mb-3">Eğitim İçeriği</label>
+                      <textarea
+                        value={siteContent.generatorPage?.educationContent || ""}
+                        onChange={(e) => updateGeneratorPage('educationContent', e.target.value)}
+                        rows={20}
+                        placeholder="Eğitim içeriğini buraya yazın. Paragraflar arasında boş satır bırakın. Başlıklar için kısa ve büyük harfle başlayan satırlar kullanın."
+                        className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-mono text-sm"
+                      />
+                      <p className="text-xs text-gray-500 mt-2 font-poppins">💡 Paragraflar arasında boş satır bırakın. Başlıklar için kısa ve büyük harfle başlayan satırlar kullanın.</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Adım Açıklamaları */}
+                <div className="p-6 bg-slate-900/30 rounded-lg border border-slate-600">
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="text-2xl">📋</span>
+                    <h4 className="text-xl font-semibold text-green-400 font-poppins">Adım Açıklamaları</h4>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {[1, 2, 3].map(num => (
+                      <div key={num}>
+                        <label className="block text-sm font-semibold text-gray-300 font-poppins mb-3">Adım {num} Başlık</label>
+                        <input
+                          type="text"
+                          value={siteContent.generatorPage?.[`step${num}Title`] || ""}
+                          onChange={(e) => updateGeneratorPage(`step${num}Title`, e.target.value)}
+                          placeholder={`Örn: ${num === 1 ? 'Kelime Girişi' : num === 2 ? 'Format Seçimi' : 'PDF İndirme'}`}
+                          className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all mb-3"
+                        />
+                        <label className="block text-sm font-semibold text-gray-300 font-poppins mb-3">Adım {num} Açıklama</label>
+                        <textarea
+                          value={siteContent.generatorPage?.[`step${num}Description`] || ""}
+                          onChange={(e) => updateGeneratorPage(`step${num}Description`, e.target.value)}
+                          rows={3}
+                          placeholder={`Adım ${num} açıklaması`}
+                          className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* İpucu Kutusu */}
+                <div className="p-6 bg-slate-900/30 rounded-lg border border-slate-600">
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="text-2xl">💡</span>
+                    <h4 className="text-xl font-semibold text-yellow-400 font-poppins">İpucu Kutusu</h4>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-300 font-poppins mb-3">İpucu Başlığı</label>
+                      <input
+                        type="text"
+                        value={siteContent.generatorPage?.tipBoxTitle || ""}
+                        onChange={(e) => updateGeneratorPage('tipBoxTitle', e.target.value)}
+                        placeholder="Örn: İpucu: Word Dosyası Formatı"
+                        className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-300 font-poppins mb-3">İpucu İçeriği</label>
+                      <textarea
+                        value={siteContent.generatorPage?.tipBoxContent || ""}
+                        onChange={(e) => updateGeneratorPage('tipBoxContent', e.target.value)}
+                        rows={5}
+                        placeholder="İpucu içeriğini buraya yazın..."
+                        className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* İletişim Sayfası */}
+            <div id="page-contact" className="bg-slate-800/50 backdrop-blur-sm rounded-xl shadow-xl border border-slate-700 p-8">
+              <h3 className="text-2xl font-bold text-white font-poppins mb-3 flex items-center gap-3">
+                <span className="text-3xl">📧</span> İletişim Sayfası
+              </h3>
+              <p className="text-gray-400 font-poppins mb-6 text-sm">İletişim sayfasındaki tüm metinleri düzenleyin</p>
+              
+              <div className="space-y-4">
+                {['title', 'subtitle', 'emailTitle', 'emailDescription', 'phoneTitle', 'phoneDescription', 'socialTitle', 'feedbackText', 'feedbackButton', 'backButton'].map(field => (
+                  <div key={field}>
+                    <label className="block text-sm font-semibold text-gray-300 font-poppins mb-2">
+                      {field === 'title' ? 'Sayfa Başlığı' :
+                       field === 'subtitle' ? 'Alt Başlık' :
+                       field === 'emailTitle' ? 'E-posta Başlığı' :
+                       field === 'emailDescription' ? 'E-posta Açıklaması' :
+                       field === 'phoneTitle' ? 'Telefon Başlığı' :
+                       field === 'phoneDescription' ? 'Telefon Açıklaması' :
+                       field === 'socialTitle' ? 'Sosyal Medya Başlığı' :
+                       field === 'feedbackText' ? 'Geri Bildirim Metni' :
+                       field === 'feedbackButton' ? 'Geri Bildirim Butonu' :
+                       'Geri Dön Butonu'}
+                    </label>
+                    {field.includes('Description') || field === 'feedbackText' ? (
+                      <textarea
+                        value={siteContent.contactPage?.[field] || ""}
+                        onChange={(e) => updatePageContent('contactPage', field, e.target.value)}
+                        rows={2}
+                        className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins text-sm"
+                      />
+                    ) : (
+                      <input
+                        type="text"
+                        value={siteContent.contactPage?.[field] || ""}
+                        onChange={(e) => updatePageContent('contactPage', field, e.target.value)}
+                        className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins text-sm"
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Geri Bildirim Sayfası */}
+            <div id="page-feedback" className="bg-slate-800/50 backdrop-blur-sm rounded-xl shadow-xl border border-slate-700 p-8">
+              <h3 className="text-2xl font-bold text-white font-poppins mb-3 flex items-center gap-3">
+                <span className="text-3xl">💬</span> Geri Bildirim Sayfası
+              </h3>
+              <p className="text-gray-400 font-poppins mb-6 text-sm">Geri bildirim sayfasındaki tüm metinleri düzenleyin</p>
+              
+              <div className="space-y-4">
+                {['title', 'subtitle', 'backButton', 'nameLabel', 'namePlaceholder', 'emailLabel', 'emailPlaceholder', 'ratingLabel', 'messageLabel', 'messagePlaceholder', 'submitButton', 'successTitle', 'successMessage', 'infoEmailTitle', 'infoEmail', 'infoResponseTitle', 'infoResponse', 'infoSupportTitle', 'infoSupport'].map(field => (
+                  <div key={field}>
+                    <label className="block text-sm font-semibold text-gray-300 font-poppins mb-2">
+                      {field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()).trim()}
+                    </label>
+                    {field.includes('Message') || field.includes('Placeholder') ? (
+                      <textarea
+                        value={siteContent.feedbackPage?.[field] || ""}
+                        onChange={(e) => updatePageContent('feedbackPage', field, e.target.value)}
+                        rows={field === 'messagePlaceholder' ? 3 : 2}
+                        className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins text-sm"
+                      />
+                    ) : (
+                      <input
+                        type="text"
+                        value={siteContent.feedbackPage?.[field] || ""}
+                        onChange={(e) => updatePageContent('feedbackPage', field, e.target.value)}
+                        className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins text-sm"
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Hazır Setler Sayfası */}
+            <div id="page-readyKits" className="bg-slate-800/50 backdrop-blur-sm rounded-xl shadow-xl border border-slate-700 p-8">
+              <h3 className="text-2xl font-bold text-white font-poppins mb-3 flex items-center gap-3">
+                <span className="text-3xl">📦</span> Hazır Setler Sayfası
+              </h3>
+              <p className="text-gray-400 font-poppins mb-6 text-sm">Hazır setler sayfasındaki tüm metinleri düzenleyin</p>
+              
+              <div className="space-y-4">
+                {['title', 'subtitle', 'description', 'allCategories', 'noKitsMessage', 'downloadButton', 'downloadingButton', 'backButton'].map(field => (
+                  <div key={field}>
+                    <label className="block text-sm font-semibold text-gray-300 font-poppins mb-2">
+                      {field === 'title' ? 'Sayfa Başlığı' :
+                       field === 'subtitle' ? 'Alt Başlık' :
+                       field === 'description' ? 'Açıklama' :
+                       field === 'allCategories' ? 'Tüm Kategoriler Metni' :
+                       field === 'noKitsMessage' ? 'Set Bulunamadı Mesajı' :
+                       field === 'downloadButton' ? 'İndir Butonu' :
+                       field === 'downloadingButton' ? 'İndiriliyor Butonu' :
+                       'Geri Dön Butonu'}
+                    </label>
+                    {field === 'description' || field === 'noKitsMessage' ? (
+                      <textarea
+                        value={siteContent.readyKitsPage?.[field] || ""}
+                        onChange={(e) => updatePageContent('readyKitsPage', field, e.target.value)}
+                        rows={2}
+                        className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins text-sm"
+                      />
+                    ) : (
+                      <input
+                        type="text"
+                        value={siteContent.readyKitsPage?.[field] || ""}
+                        onChange={(e) => updatePageContent('readyKitsPage', field, e.target.value)}
+                        className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins text-sm"
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* SSS Sayfası */}
+            <div id="page-faq" className="bg-slate-800/50 backdrop-blur-sm rounded-xl shadow-xl border border-slate-700 p-8">
+              <h3 className="text-2xl font-bold text-white font-poppins mb-3 flex items-center gap-3">
+                <span className="text-3xl">❓</span> SSS Sayfası
+              </h3>
+              <p className="text-gray-400 font-poppins mb-6 text-sm">SSS sayfasındaki metinleri düzenleyin (Sorular yasal sayfalar bölümünden düzenlenir)</p>
+              
+              <div className="space-y-4">
+                {['badge', 'subtitle', 'noQuestionsMessage', 'backButton'].map(field => (
+                  <div key={field}>
+                    <label className="block text-sm font-semibold text-gray-300 font-poppins mb-2">
+                      {field === 'badge' ? 'Badge Metni' :
+                       field === 'subtitle' ? 'Alt Başlık' :
+                       field === 'noQuestionsMessage' ? 'Soru Bulunamadı Mesajı' :
+                       'Geri Dön Butonu'}
+                    </label>
+                    {field === 'noQuestionsMessage' ? (
+                      <textarea
+                        value={siteContent.faqPage?.[field] || ""}
+                        onChange={(e) => updatePageContent('faqPage', field, e.target.value)}
+                        rows={2}
+                        className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins text-sm"
+                      />
+                    ) : (
+                      <input
+                        type="text"
+                        value={siteContent.faqPage?.[field] || ""}
+                        onChange={(e) => updatePageContent('faqPage', field, e.target.value)}
+                        className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white font-poppins text-sm"
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {/* Yasal Sayfalar İçeriği */}
-            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl shadow-xl border border-slate-700 p-8">
+            <div id="page-legal" className="bg-slate-800/50 backdrop-blur-sm rounded-xl shadow-xl border border-slate-700 p-8">
               <h3 className="text-2xl font-bold text-white font-poppins mb-3 flex items-center gap-3">
                 <span className="text-3xl">⚖️</span> Yasal Sayfalar İçeriği
               </h3>
-              <p className="text-gray-400 font-poppins mb-6 text-sm">Gizlilik Politikası, Kullanım Koşulları ve SSS sayfalarının içeriğini düzenleyin</p>
               
               <div className="space-y-8">
                 {/* Gizlilik Politikası */}

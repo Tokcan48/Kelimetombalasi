@@ -6,8 +6,10 @@ import { subscribeToCategories } from './utils/categories'
 import { PDFDocument, rgb } from 'pdf-lib'
 import { getApprovedReadyKits, subscribeToApprovedReadyKits } from './utils/approvedKits'
 import { useAdSense } from './hooks/useAdSense'
+import { getSiteContent } from './utils/siteContent'
 
 function ReadyKits() {
+  const content = getSiteContent()
   // Load AdSense only on content pages
   useAdSense()
 
@@ -343,10 +345,10 @@ function ReadyKits() {
               <span className="text-indigo-600 font-poppins text-sm font-semibold">⚡ Hazır Setler</span>
             </div>
             <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 font-poppins">
-              Hazır Kelime Setleri
+              {content.readyKitsPage?.title || "Hazır Kelime Setleri"}
             </h1>
             <p className="text-xl text-gray-600 font-poppins max-w-2xl mx-auto">
-              Tek tıkla PDF indir! Haftanın günleri, sayılar, renkler ve daha fazlası...
+              {content.readyKitsPage?.subtitle || "Tek tıkla PDF indir! Haftanın günleri, sayılar, renkler ve daha fazlası..."}
             </p>
           </div>
 
@@ -362,7 +364,7 @@ function ReadyKits() {
                     <h3 className="text-xl font-bold text-gray-900 font-poppins">Hazır Kelime Setleri</h3>
                   </div>
                   <p className="text-gray-700 font-poppins leading-relaxed">
-                    Özenle seçilmiş ve kategorize edilmiş kelime setlerini tek tıkla indirebilirsiniz. Her set belirli bir konuya odaklanır (örneğin: haftanın günleri, renkler, hayvanlar) ve öğrenme sürecinizi kolaylaştırır. Setler, öğretmenler ve öğrenciler tarafından onaylanmış ve test edilmiştir.
+                    {content.readyKitsPage?.description || "Özenle seçilmiş ve kategorize edilmiş kelime setlerini tek tıkla indirebilirsiniz. Her set belirli bir konuya odaklanır (örneğin: haftanın günleri, renkler, hayvanlar) ve öğrenme sürecinizi kolaylaştırır."}
                   </p>
                 </div>
                 <div>
@@ -492,7 +494,7 @@ function ReadyKits() {
                         ) : (
                           <span>🎨</span>
                         )}
-                        <span>{downloading === kit.id ? 'İndiriliyor...' : 'Renkli'}</span>
+                        <span>{downloading === kit.id ? (content.readyKitsPage?.downloadingButton || 'İndiriliyor...') : 'Renkli'}</span>
                       </button>
                       <button
                         onClick={() => generateReadyKitPDF(kit, 'bw')}
@@ -504,7 +506,7 @@ function ReadyKits() {
                         ) : (
                           <span>⚫</span>
                         )}
-                        <span>{downloading === kit.id ? 'İndiriliyor...' : 'S/B'}</span>
+                        <span>{downloading === kit.id ? (content.readyKitsPage?.downloadingButton || 'İndiriliyor...') : 'S/B'}</span>
                       </button>
                     </div>
                   </div>
@@ -563,7 +565,7 @@ function ReadyKits() {
                           ) : (
                             <span>🎨</span>
                           )}
-                          <span>{downloading === kit.id ? 'İndiriliyor...' : 'Renkli'}</span>
+                          <span>{downloading === kit.id ? (content.readyKitsPage?.downloadingButton || 'İndiriliyor...') : 'Renkli'}</span>
                         </button>
                         <button
                           onClick={() => generateReadyKitPDF(kit, 'bw')}
@@ -575,7 +577,7 @@ function ReadyKits() {
                           ) : (
                             <span>⚫</span>
                           )}
-                          <span>{downloading === kit.id ? 'İndiriliyor...' : 'S/B'}</span>
+                          <span>{downloading === kit.id ? (content.readyKitsPage?.downloadingButton || 'İndiriliyor...') : 'S/B'}</span>
                         </button>
                       </div>
                     </div>

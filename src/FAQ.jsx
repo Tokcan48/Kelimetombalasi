@@ -117,13 +117,13 @@ function FAQ() {
           {/* Page Header */}
           <div className="text-center mb-12">
             <div className="inline-block mb-6 px-6 py-3 bg-white/80 backdrop-blur-sm rounded-full border border-indigo-200 shadow-lg">
-              <span className="text-indigo-600 font-poppins text-sm font-semibold">❓ Sık Sorulan Sorular</span>
+              <span className="text-indigo-600 font-poppins text-sm font-semibold">{content.faqPage?.badge || "❓ Sık Sorulan Sorular"}</span>
             </div>
             <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 font-poppins">
               {faqData.title || "Sıkça Sorulan Sorular"}
             </h1>
             <p className="text-xl text-gray-600 font-poppins">
-              Aklınıza takılan soruların yanıtları burada
+              {content.faqPage?.subtitle || "Aklınıza takılan soruların yanıtları burada"}
             </p>
           </div>
 
@@ -157,7 +157,7 @@ function FAQ() {
           ) : (
             <div className="bg-gray-50 rounded-xl p-8 border-2 border-gray-200 text-center mb-12">
               <p className="text-gray-600 font-poppins">
-                Henüz soru eklenmemiş. Admin panelinden içerik ekleyebilirsiniz.
+                {content.faqPage?.noQuestionsMessage || "Henüz soru eklenmemiş. Admin panelinden içerik ekleyebilirsiniz."}
               </p>
             </div>
           )}
@@ -171,7 +171,7 @@ function FAQ() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
-              Ana Sayfaya Dön
+              {content.faqPage?.backButton || "Ana Sayfaya Dön"}
             </Link>
           </div>
         </div>

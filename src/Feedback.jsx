@@ -6,6 +6,7 @@ import { getSiteContent } from './utils/siteContent'
 import { SECURE_LOGIN_URL } from './App'
 
 function Feedback() {
+  const content = getSiteContent()
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -39,8 +40,7 @@ function Feedback() {
   }
 
   // Check for maintenance mode
-  const siteContent = getSiteContent()
-  if (siteContent.siteStatus === 'maintenance') {
+  if (content.siteStatus === 'maintenance') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-900 to-slate-800 flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-slate-800/50 backdrop-blur-xl rounded-2xl p-8 shadow-2xl border border-slate-700 text-center">
@@ -48,7 +48,7 @@ function Feedback() {
             <span className="text-4xl">🔧</span>
           </div>
           <h1 className="text-3xl font-bold text-white font-poppins mb-4">Site Bakımda</h1>
-          <p className="text-gray-300 font-poppins mb-6">{siteContent.maintenanceMessage}</p>
+          <p className="text-gray-300 font-poppins mb-6">{content.maintenanceMessage}</p>
           <div className="flex items-center justify-center gap-2 text-gray-400 text-sm font-poppins">
             <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
             <span>Sistem güncellemesi yapılıyor...</span>
@@ -76,13 +76,13 @@ function Feedback() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
-              Geri Dön
+              {content.feedbackPage?.backButton || "Geri Dön"}
             </Link>
             <h1 className="text-4xl md:text-5xl font-bold text-gray-900 font-poppins mb-4">
-              Görüş ve Önerileriniz
+              {content.feedbackPage?.title || "Görüş ve Önerileriniz"}
             </h1>
             <p className="text-lg text-gray-600 font-poppins">
-              Fikirleriniz bizim için değerli. Lütfen görüş ve önerilerinizi bizimle paylaşın.
+              {content.feedbackPage?.subtitle || "Fikirleriniz bizim için değerli. Lütfen görüş ve önerilerinizi bizimle paylaşın."}
             </p>
           </div>
 
@@ -95,15 +95,15 @@ function Feedback() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900 font-poppins mb-2">Teşekkürler!</h2>
-                <p className="text-gray-600 font-poppins">Görüşleriniz başarıyla gönderildi. En kısa sürede değerlendireceğiz.</p>
+                <h2 className="text-2xl font-bold text-gray-900 font-poppins mb-2">{content.feedbackPage?.successTitle || "Teşekkürler!"}</h2>
+                <p className="text-gray-600 font-poppins">{content.feedbackPage?.successMessage || "Görüşleriniz başarıyla gönderildi. En kısa sürede değerlendireceğiz."}</p>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* İsim */}
                 <div>
                   <label htmlFor="name" className="block text-sm font-medium text-gray-700 font-poppins mb-2">
-                    Adınız Soyadınız
+                    {content.feedbackPage?.nameLabel || "Adınız Soyadınız"}
                   </label>
                   <input
                     type="text"
@@ -112,14 +112,14 @@ function Feedback() {
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-poppins"
-                    placeholder="Ahmet Yılmaz"
+                    placeholder={content.feedbackPage?.namePlaceholder || "Ahmet Yılmaz"}
                   />
                 </div>
 
                 {/* Email */}
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-gray-700 font-poppins mb-2">
-                    E-posta Adresiniz
+                    {content.feedbackPage?.emailLabel || "E-posta Adresiniz"}
                   </label>
                   <input
                     type="email"
@@ -128,14 +128,14 @@ function Feedback() {
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-poppins"
-                    placeholder="ornek@email.com"
+                    placeholder={content.feedbackPage?.emailPlaceholder || "ornek@email.com"}
                   />
                 </div>
 
                 {/* Rating */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 font-poppins mb-2">
-                    Değerlendirme
+                    {content.feedbackPage?.ratingLabel || "Değerlendirme"}
                   </label>
                   <div className="flex gap-2">
                     {[1, 2, 3, 4, 5].map((star) => (
@@ -158,7 +158,7 @@ function Feedback() {
                 {/* Mesaj */}
                 <div>
                   <label htmlFor="message" className="block text-sm font-medium text-gray-700 font-poppins mb-2">
-                    Mesajınız
+                    {content.feedbackPage?.messageLabel || "Mesajınız"}
                   </label>
                   <textarea
                     id="message"
@@ -167,7 +167,7 @@ function Feedback() {
                     value={formData.message}
                     onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-poppins resize-none"
-                    placeholder="Görüş ve önerilerinizi buraya yazabilirsiniz..."
+                    placeholder={content.feedbackPage?.messagePlaceholder || "Görüş ve önerilerinizi buraya yazabilirsiniz..."}
                   />
                 </div>
 
@@ -176,7 +176,7 @@ function Feedback() {
                   type="submit"
                   className="w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white font-semibold py-4 rounded-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-300 font-poppins"
                 >
-                  Gönder
+                  {content.feedbackPage?.submitButton || "Gönder"}
                 </button>
               </form>
             )}
@@ -190,8 +190,8 @@ function Feedback() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
               </div>
-              <h3 className="font-bold text-gray-900 font-poppins mb-1">E-posta</h3>
-              <p className="text-sm text-gray-600 font-poppins">destek@kelimetombalasi.com</p>
+              <h3 className="font-bold text-gray-900 font-poppins mb-1">{content.feedbackPage?.infoEmailTitle || "E-posta"}</h3>
+              <p className="text-sm text-gray-600 font-poppins">{content.feedbackPage?.infoEmail || "destek@kelimetombalasi.com"}</p>
             </div>
             <div className="bg-white rounded-xl p-6 text-center shadow-lg border border-gray-100">
               <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -199,8 +199,8 @@ function Feedback() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <h3 className="font-bold text-gray-900 font-poppins mb-1">Yanıt Süresi</h3>
-              <p className="text-sm text-gray-600 font-poppins">24 saat içinde</p>
+              <h3 className="font-bold text-gray-900 font-poppins mb-1">{content.feedbackPage?.infoResponseTitle || "Yanıt Süresi"}</h3>
+              <p className="text-sm text-gray-600 font-poppins">{content.feedbackPage?.infoResponse || "24 saat içinde"}</p>
             </div>
             <div className="bg-white rounded-xl p-6 text-center shadow-lg border border-gray-100">
               <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -208,8 +208,8 @@ function Feedback() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
               </div>
-              <h3 className="font-bold text-gray-900 font-poppins mb-1">Destek Hattı</h3>
-              <p className="text-sm text-gray-600 font-poppins">7/24 Aktif</p>
+              <h3 className="font-bold text-gray-900 font-poppins mb-1">{content.feedbackPage?.infoSupportTitle || "Destek Hattı"}</h3>
+              <p className="text-sm text-gray-600 font-poppins">{content.feedbackPage?.infoSupport || "7/24 Aktif"}</p>
             </div>
           </div>
         </div>

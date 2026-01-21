@@ -1,31 +1,20 @@
-import { useEffect } from 'react'
-
 /**
- * Hook to load Google AdSense script only on content pages
- * Prevents ads from showing on pages without sufficient content (Admin, Login, etc.)
+ * AdSense hook - COMPLETELY DISABLED
+ * AdSense script is completely removed to avoid policy violations.
+ * Google can still verify the site by crawling it - script is not required for verification.
+ * 
+ * To re-enable AdSense in the future:
+ * 1. Ensure Auto Ads is properly configured in AdSense dashboard
+ * 2. Uncomment the code below
+ * 3. Add manual ad units where appropriate
  */
 export function useAdSense() {
-  useEffect(() => {
-    // Check if AdSense script is already loaded
-    const existingScript = document.querySelector('script[src*="adsbygoogle"]')
-    
-    if (existingScript) {
-      return // Script already loaded
-    }
-
-    // Create and add AdSense script
-    const script = document.createElement('script')
-    script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=pub-5013733153774232'
-    script.async = true
-    script.crossOrigin = 'anonymous'
-    document.head.appendChild(script)
-
-    // Cleanup function
-    return () => {
-      // Don't remove script on unmount as it might be used by other components
-      // The script will remain for navigation between content pages
-    }
-  }, [])
+  // AdSense script loading is completely disabled
+  // This prevents Google from detecting any AdSense activity
+  // Google can still verify the site through crawling (no script needed)
+  
+  // No script will be loaded - this is the safest approach
 }
+
 
 

@@ -154,7 +154,7 @@ function Home() {
         <div className="relative z-10 container mx-auto px-4 py-20 md:py-32">
           <div className="max-w-4xl mx-auto text-center">
             <div className="inline-block mb-6 px-4 py-2 bg-white/80 backdrop-blur-sm rounded-full border border-gray-200 shadow-sm">
-              <span className="text-sm font-semibold text-gray-700 font-poppins">✨ Ücretsiz & Kolay Kullanım</span>
+              <span className="text-sm font-semibold text-gray-700 font-poppins">{content.homePage?.heroBadge || "✨ Ücretsiz & Kolay Kullanım"}</span>
             </div>
             <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent font-poppins leading-normal overflow-visible" style={{ textRendering: 'optimizeLegibility', lineHeight: '1.2' }}>
               {content.mainHeading}
@@ -170,7 +170,7 @@ function Home() {
                 onClick={handleButtonClick}
                 className="group w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all font-poppins text-lg flex items-center justify-center gap-3 transform hover:scale-105"
               >
-                <span>🚀 Hemen Başla</span>
+                <span>{content.homePage?.ctaButton1 || "🚀 Hemen Başla"}</span>
                 <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                 </svg>
@@ -182,14 +182,14 @@ function Home() {
                 }}
                 className="w-full sm:w-auto px-8 py-4 bg-white border-2 border-indigo-300 hover:border-indigo-400 text-gray-900 font-bold rounded-xl hover:bg-indigo-50 transition-all font-poppins text-lg shadow-md hover:shadow-lg transform hover:scale-105"
               >
-                ❓ Nasıl Çalışır?
+                {content.homePage?.ctaButton3 || "❓ Nasıl Çalışır?"}
               </button>
               <Link
                 to="/ready-kits"
                 onClick={handleButtonClick}
                 className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all font-poppins text-lg flex items-center justify-center gap-3 transform hover:scale-105"
               >
-                <span>⚡ Hazır Setler</span>
+                <span>{content.homePage?.ctaButton2 || "⚡ Hazır Setler"}</span>
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
@@ -224,10 +224,10 @@ function Home() {
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 font-poppins">
-              Neden Bizi Seçmelisiniz?
+              {content.homePage?.featuresTitle || "Neden Bizi Seçmelisiniz?"}
             </h2>
             <p className="text-xl text-gray-600 font-poppins max-w-2xl mx-auto">
-              Binlerce öğretmen ve öğrenci kelime öğrenmek için bizi tercih ediyor
+              {content.homePage?.featuresSubtitle || "Binlerce öğretmen ve öğrenci kelime öğrenmek için bizi tercih ediyor"}
             </p>
           </div>
 
@@ -239,9 +239,9 @@ function Home() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-3 font-poppins">⚡ Hızlı ve Kolay</h3>
+              <h3 className="text-2xl font-bold text-gray-900 mb-3 font-poppins">{content.homePage?.feature1Title || "⚡ Hızlı ve Kolay"}</h3>
               <p className="text-gray-600 font-poppins leading-relaxed">
-                Kelimelerinizi girin veya Word dosyası yükleyin. Saniyeler içinde profesyonel PDF'niz hazır!
+                {content.homePage?.feature1Description || "Kelimelerinizi girin veya Word dosyası yükleyin. Saniyeler içinde profesyonel PDF'niz hazır!"}
               </p>
             </div>
 
@@ -252,9 +252,9 @@ function Home() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
                 </svg>
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-3 font-poppins">🎨 Özelleştirilebilir</h3>
+              <h3 className="text-2xl font-bold text-gray-900 mb-3 font-poppins">{content.homePage?.feature2Title || "🎨 Özelleştirilebilir"}</h3>
               <p className="text-gray-600 font-poppins leading-relaxed">
-                Renkli veya siyah-beyaz yazıcılar için optimize edilmiş PDF formatları arasından seçim yapın.
+                {content.homePage?.feature2Description || "Renkli veya siyah-beyaz yazıcılar için optimize edilmiş PDF formatları arasından seçim yapın."}
               </p>
             </div>
 
@@ -265,9 +265,9 @@ function Home() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-3 font-poppins">🔒 Tamamen Güvenli</h3>
+              <h3 className="text-2xl font-bold text-gray-900 mb-3 font-poppins">{content.homePage?.feature3Title || "🔒 Tamamen Güvenli"}</h3>
               <p className="text-gray-600 font-poppins leading-relaxed">
-                Tüm işlemler tarayıcınızda gerçekleşir. Verileriniz hiçbir sunucuya gönderilmez.
+                {content.homePage?.feature3Description || "Tüm işlemler tarayıcınızda gerçekleşir. Verileriniz hiçbir sunucuya gönderilmez."}
               </p>
             </div>
           </div>
@@ -280,10 +280,10 @@ function Home() {
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-12">
               <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 font-poppins">
-                Nasıl Çalışır?
+                {content.homePage?.howItWorksTitle || "Nasıl Çalışır?"}
               </h2>
               <p className="text-xl text-gray-600 font-poppins max-w-2xl mx-auto">
-                Sadece 3 basit adımda kelime kartlarınızı oluşturun
+                {content.homePage?.howItWorksSubtitle || "Sadece 3 basit adımda kelime kartlarınızı oluşturun"}
               </p>
             </div>
             
@@ -294,9 +294,9 @@ function Home() {
                     1
                   </div>
                   <div className="flex-1 pt-2">
-                    <h4 className="text-2xl font-bold text-gray-900 mb-3 font-poppins">📝 Kelimelerinizi Girin</h4>
+                    <h4 className="text-2xl font-bold text-gray-900 mb-3 font-poppins">{content.homePage?.step1Title || "📝 Kelimelerinizi Girin"}</h4>
                     <p className="text-gray-600 font-poppins text-lg leading-relaxed">
-                      Kelimeleri manuel olarak yazın veya mevcut Word dosyanızı (.docx) yükleyin.
+                      {content.homePage?.step1Description || "Kelimeleri manuel olarak yazın veya mevcut Word dosyanızı (.docx) yükleyin."}
                     </p>
                   </div>
                 </div>
@@ -312,9 +312,9 @@ function Home() {
                     2
                   </div>
                   <div className="flex-1 pt-2">
-                    <h4 className="text-2xl font-bold text-gray-900 mb-3 font-poppins">🖨️ Yazıcı Tipini Seçin</h4>
+                    <h4 className="text-2xl font-bold text-gray-900 mb-3 font-poppins">{content.homePage?.step2Title || "🖨️ Yazıcı Tipini Seçin"}</h4>
                     <p className="text-gray-600 font-poppins text-lg leading-relaxed">
-                      Renkli veya siyah-beyaz yazıcınız için optimize edilmiş format seçin.
+                      {content.homePage?.step2Description || "Renkli veya siyah-beyaz yazıcınız için optimize edilmiş format seçin."}
                     </p>
                   </div>
                 </div>
@@ -330,9 +330,9 @@ function Home() {
                     3
                   </div>
                   <div className="flex-1 pt-2">
-                    <h4 className="text-2xl font-bold text-gray-900 mb-3 font-poppins">📥 PDF'i İndirin ve Yazdırın</h4>
+                    <h4 className="text-2xl font-bold text-gray-900 mb-3 font-poppins">{content.homePage?.step3Title || "📥 PDF'i İndirin ve Yazdırın"}</h4>
                     <p className="text-gray-600 font-poppins text-lg leading-relaxed">
-                      PDF'iniz otomatik olarak indirilir. Yazdırın, kesin ve öğrenmeye başlayın!
+                      {content.homePage?.step3Description || "PDF'iniz otomatik olarak indirilir. Yazdırın, kesin ve öğrenmeye başlayın!"}
                     </p>
                   </div>
                 </div>
@@ -347,10 +347,10 @@ function Home() {
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 font-poppins">
-              Kullanıcılarımız Ne Diyor?
+              {content.homePage?.testimonialsTitle || "Kullanıcılarımız Ne Diyor?"}
             </h2>
             <p className="text-xl text-gray-600 font-poppins">
-              Binlerce mutlu kullanıcıdan bazıları
+              {content.homePage?.testimonialsSubtitle || "Binlerce mutlu kullanıcıdan bazıları"}
             </p>
           </div>
               
@@ -364,15 +364,15 @@ function Home() {
                 ))}
               </div>
               <p className="text-gray-700 font-poppins mb-4 leading-relaxed">
-                "Öğrencilerim için kelime kartları hazırlamak artık çok kolay. Harika bir araç!"
+                {content.homePage?.testimonial1Text || "\"Öğrencilerim için kelime kartları hazırlamak artık çok kolay. Harika bir araç!\""}
               </p>
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold font-poppins shadow-md">
-                  AY
+                  {content.homePage?.testimonial1Name?.split(' ').map(n => n[0]).join('') || 'AY'}
                 </div>
                 <div>
-                  <p className="font-bold text-gray-900 font-poppins">Ayşe Yılmaz</p>
-                  <p className="text-sm text-gray-500 font-poppins">İngilizce Öğretmeni</p>
+                  <p className="font-bold text-gray-900 font-poppins">{content.homePage?.testimonial1Name || "Ayşe Yılmaz"}</p>
+                  <p className="text-sm text-gray-500 font-poppins">{content.homePage?.testimonial1Role || "İngilizce Öğretmeni"}</p>
                 </div>
               </div>
             </div>
@@ -386,15 +386,15 @@ function Home() {
                 ))}
               </div>
               <p className="text-gray-700 font-poppins mb-4 leading-relaxed">
-                "Sınavlara hazırlanırken kelime kartları çok işime yaradı. Teşekkürler!"
+                {content.homePage?.testimonial2Text || "\"Sınavlara hazırlanırken kelime kartları çok işime yaradı. Teşekkürler!\""}
               </p>
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-gradient-to-br from-gray-800 to-gray-900 rounded-full flex items-center justify-center text-white font-bold font-poppins shadow-md">
-                  MK
+                  {content.homePage?.testimonial2Name?.split(' ').map(n => n[0]).join('') || 'MK'}
                 </div>
                 <div>
-                  <p className="font-bold text-gray-900 font-poppins">Mehmet Kaya</p>
-                  <p className="text-sm text-gray-500 font-poppins">Lise Öğrencisi</p>
+                  <p className="font-bold text-gray-900 font-poppins">{content.homePage?.testimonial2Name || "Mehmet Kaya"}</p>
+                  <p className="text-sm text-gray-500 font-poppins">{content.homePage?.testimonial2Role || "Lise Öğrencisi"}</p>
                 </div>
               </div>
             </div>
@@ -408,15 +408,15 @@ function Home() {
                 ))}
               </div>
               <p className="text-gray-700 font-poppins mb-4 leading-relaxed">
-                "Çocuğum için kelime kartları hazırlamak hiç bu kadar kolay olmamıştı!"
+                {content.homePage?.testimonial3Text || "\"Çocuğum için kelime kartları hazırlamak hiç bu kadar kolay olmamıştı!\""}
               </p>
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-gradient-to-br from-green-600 to-emerald-600 rounded-full flex items-center justify-center text-white font-bold font-poppins shadow-md">
-                  ZD
+                  {content.homePage?.testimonial3Name?.split(' ').map(n => n[0]).join('') || 'ZD'}
                 </div>
                 <div>
-                  <p className="font-bold text-gray-900 font-poppins">Zeynep Demir</p>
-                  <p className="text-sm text-gray-500 font-poppins">Veli</p>
+                  <p className="font-bold text-gray-900 font-poppins">{content.homePage?.testimonial3Name || "Zeynep Demir"}</p>
+                  <p className="text-sm text-gray-500 font-poppins">{content.homePage?.testimonial3Role || "Veli"}</p>
                 </div>
               </div>
             </div>
